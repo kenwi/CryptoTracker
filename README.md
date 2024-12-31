@@ -52,7 +52,7 @@ Configuration is managed through `appsettings.json`:
       }
     ]
   },
-  "CoinGeckoIntegration": {
+  "CoinGecko": {
     "BaseUrl": "https://api.coingecko.com/api/v3",
     "Assets": [
       {
