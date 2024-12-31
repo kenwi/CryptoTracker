@@ -109,6 +109,86 @@ ETH      | 1.456       | 3,400.000 USDT  | 4,950.40 USDT    | 51 979.20 NOK     
 MYRIA    | 1017587.025 | 0.002 USDT      | 2,035.17 USDT    | 21 369.29 NOK     | +4.28          | +0.21%   | MYRIA
 ```
 
+### Directus Integration
+
+The application can persist balance data to a Directus instance. It requires two collections:
+
+#### Collection: coin_values
+
+Tracks individual coin balances:
+
+```json
+{
+  "id": "1",                    // Integer, Primary Key, Auto-increment
+  "date_created": "2024-01-01", // DateTime, Auto-generate
+  "asset": "BTC",              // String
+  "balance": 0.12345,          // Decimal/Float
+  "price": 65000.00,           // Decimal/Float
+  "value": 7995.00,            // Decimal/Float
+  "source": "Binance"          // String
+}
+```
+
+#### Collection: crypto_value
+
+Tracks total portfolio value:
+
+```json
+{
+  "id": "1",                    // Integer, Primary Key, Auto-increment
+  "date_created": "2024-01-01", // DateTime, Auto-generate
+  "total_value": 15449.68       // Decimal/Float
+}
+```
+
+#### API Endpoints
+
+The service makes POST requests to:
+
+- `{DirectusHost}/items/coin_values`
+- `{DirectusHost}/items/crypto_value`
+
+Example configuration:
+
+```json
+"Directus": {
+  "Host": "https://your-directus-host.com",
+  "ApiKey": "your-directus-api-key",
+  "CoinValuesEndpoint": "coin_values",
+  "CryptoValueEndpoint": "crypto_value",
+  "Enabled": true
+}
+```
+
+Headers used for all requests:
+
+```text
+Authorization: Bearer your-directus-api-key
+Content-Type: application/json
+```
+
+Example POST body for coin values:
+
+```json
+{
+  "asset": "BTC",
+  "balance": 0.12345,
+  "price": 65000.00,
+  "value": 7995.00,
+  "source": "Binance"
+}
+```
+
+Example POST body for total value:
+
+```json
+{
+  "total_value": 15449.68
+}
+```
+
+Note: The `date_created` field is automatically handled by Directus.
+
 ## Prerequisites
 
 - .NET 8.0 SDK
