@@ -13,7 +13,8 @@ public class DirectusService : IDirectusService
         IHttpClientFactory httpClientFactory,
         IOptions<DirectusConfig> config,
         IOptions<CryptoTrackingConfig> trackingConfig,
-        ILogger<DirectusService> logger)
+        ILogger<DirectusService> logger,
+        IValueCalculationService valueCalculationService)
     {
         _httpClient = httpClientFactory.CreateClient();
         _config = config.Value;
@@ -24,7 +25,7 @@ public class DirectusService : IDirectusService
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _config.ApiKey);
     }
 
-    public async Task SendCoinValueAsync(string token, decimal balance, decimal price, decimal value, string source)
+    public async Task SendCoinValueAsync(string token, decimal balance, decimal price, decimal value, string source, decimal btcValue)
     {
         var data = new
         {
@@ -32,17 +33,19 @@ public class DirectusService : IDirectusService
             balance,
             price,
             value,
-            source
+            source,
+            btc_value = btcValue
         };
 
         await SendApiRequestAsync(data, _config.CoinValuesEndpoint);
     }
 
-    public async Task SendTotalBalanceAsync(decimal usdtBalance)
+    public async Task SendTotalBalanceAsync(decimal usdtBalance, decimal totalBtcValue)
     {
         var data = new
         {
-            value = usdtBalance.ToString("F2", System.Globalization.CultureInfo.CreateSpecificCulture("en-US"))
+            value = usdtBalance.ToString("F2", System.Globalization.CultureInfo.CreateSpecificCulture("en-US")),
+            btc_value = totalBtcValue.ToString("F8", System.Globalization.CultureInfo.CreateSpecificCulture("en-US"))
         };
 
         await SendApiRequestAsync(data, _config.TotalBalanceEndpoint);

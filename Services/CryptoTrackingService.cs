@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Binance.Net.Objects.Models.Spot;
 using Microsoft.Extensions.Options;
+using System.Linq;
 
 public class CryptoTrackingService : IHostedService
 {
@@ -16,6 +17,7 @@ public class CryptoTrackingService : IHostedService
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly IKeyPressHandlerService _keyPressHandler;
     private readonly ICoinGeckoService? _coinGeckoService;
+    private readonly IValueCalculationService _valueCalculationService;
 
     public CryptoTrackingService(
         IBinanceService binanceService,
@@ -26,7 +28,8 @@ public class CryptoTrackingService : IHostedService
         IOptions<CryptoTrackingConfig> trackingConfig,
         IDisplayService balanceDisplayService,
         IKeyPressHandlerService keyPressHandler,
-        ICoinGeckoService? coinGeckoService)
+        ICoinGeckoService? coinGeckoService,
+        IValueCalculationService valueCalculationService)
     {
         _binanceService = binanceService;
         _directusService = directusService;
@@ -37,6 +40,7 @@ public class CryptoTrackingService : IHostedService
         _balanceDisplayService = balanceDisplayService;
         _keyPressHandler = keyPressHandler;
         _coinGeckoService = coinGeckoService;
+        _valueCalculationService = valueCalculationService;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -83,16 +87,21 @@ public class CryptoTrackingService : IHostedService
             // Only send to Directus if service is available
             if (_directusService != null)
             {
-                var totalValue = allBalances.Sum(b => b.Value);
-                
-                var tasks = allBalances.Select(balance => 
-                    _directusService.SendCoinValueAsync(
+                var tasks = allBalances.Select(balance =>
+                {
+                    var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
+                    return _directusService.SendCoinValueAsync(
                         balance.Asset,
                         balance.Balance,
                         balance.Price,
                         balance.Value,
-                        balance.Source))
-                    .Append(_directusService.SendTotalBalanceAsync(totalValue));
+                        balance.Source,
+                        btcValue);
+                });
+
+                var totalValue = allBalances.Sum(b => b.Value);
+                var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
+                tasks = tasks.Append(_directusService.SendTotalBalanceAsync(totalValue, totalBtcValue));
 
                 await Task.WhenAll(tasks);
             }
