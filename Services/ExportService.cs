@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Globalization;
 
 public class ExportService : IExportService
 {
@@ -56,6 +57,8 @@ public class ExportService : IExportService
         string totalsPath)
     {
         var timestamp = DateTime.Now;
+        var usCulture = new CultureInfo("en-US");
+        usCulture.NumberFormat.NumberGroupSeparator = "";  // Remove thousand separators
         
         // Export individual values
         var valueLines = new List<string>();
@@ -69,8 +72,14 @@ public class ExportService : IExportService
             var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
             var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
 
-            valueLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss},{balance.Asset},{balance.Balance}," +
-                         $"{balance.Price},{balance.Value},{nokValue},{btcValue},{balance.Source}");
+            valueLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss}," +
+                          $"{balance.Asset}," +
+                          $"{balance.Balance.ToString("F3", usCulture)}," +
+                          $"{balance.Price.ToString("F3", usCulture)}," +
+                          $"{balance.Value.ToString("F2", usCulture)}," +
+                          $"{nokValue.ToString("F2", usCulture)}," +
+                          $"{btcValue.ToString("F8", usCulture)}," +
+                          $"{balance.Source}");
         }
 
         await File.AppendAllLinesAsync(valuesPath, valueLines);
@@ -86,7 +95,10 @@ public class ExportService : IExportService
         var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
         var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
 
-        totalLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss},{totalValue},{totalNokValue},{totalBtcValue}");
+        totalLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss}," +
+                      $"{totalValue.ToString("F2", usCulture)}," +
+                      $"{totalNokValue.ToString("F2", usCulture)}," +
+                      $"{totalBtcValue.ToString("F8", usCulture)}");
         
         await File.AppendAllLinesAsync(totalsPath, totalLines);
     }
