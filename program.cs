@@ -30,6 +30,7 @@ public class Program
                 services.AddSingleton<IDisplayService, BalanceDisplayService>();
                 services.AddSingleton<IExchangeRateService, ExchangeRateService>();
                 services.AddSingleton<IKeyPressHandlerService, KeyPressHandlerService>();
+                services.AddSingleton<IValueCalculationService, ValueCalculationService>();
 
                 // Conditionally register services based on demo mode
                 var cryptoConfig = context.Configuration.GetSection("CryptoTracking").Get<CryptoTrackingConfig>();
@@ -84,7 +85,9 @@ public class Program
                             sp.GetRequiredService<IOptions<CryptoTrackingConfig>>(),
                             sp.GetRequiredService<IDisplayService>(),
                             sp.GetRequiredService<IKeyPressHandlerService>(),
-                            coinGeckoService);
+                            coinGeckoService,
+                            sp.GetRequiredService<IValueCalculationService>()
+                            );
                     });
                 }
             });
