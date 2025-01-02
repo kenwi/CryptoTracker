@@ -23,6 +23,7 @@ public class Program
                 services.Configure<MyriaConfig>(context.Configuration.GetSection("Myria"));
                 services.Configure<ExchangeRateConfig>(context.Configuration.GetSection("ExchangeRate"));
                 services.Configure<CryptoTrackingConfig>(context.Configuration.GetSection("CryptoTracking"));
+                services.Configure<ExportConfig>(context.Configuration.GetSection("Export"));
                 services.Configure<CoinGeckoConfig>(context.Configuration.GetSection("CoinGecko"));
 
                 // Services
@@ -30,6 +31,7 @@ public class Program
                 services.AddSingleton<IDisplayService, BalanceDisplayService>();
                 services.AddSingleton<IExchangeRateService, ExchangeRateService>();
                 services.AddSingleton<IKeyPressHandlerService, KeyPressHandlerService>();
+                services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<IValueCalculationService, ValueCalculationService>();
 
                 // Conditionally register services based on demo mode
@@ -63,7 +65,14 @@ public class Program
                     {
                         services.AddSingleton<IDirectusService, DirectusService>();
                     }
-                                       
+                    
+                    // Only add MyriaService if config section exists and is enabled
+                    var myriaConfig = context.Configuration.GetSection("Myria").Get<MyriaConfig>();
+                    if (myriaConfig?.Enabled == true)
+                    {
+                        services.AddSingleton<IMyriaService, MyriaService>();
+                    }
+                    
                     // Register CoinGeckoService if configured
                     var coinGeckoConfig = context.Configuration.GetSection("CoinGecko").Get<CoinGeckoConfig>();
                     if (coinGeckoConfig?.Assets.Any() == true)
@@ -73,6 +82,7 @@ public class Program
                     
                     services.AddSingleton<IHostedService>(sp =>
                     {
+                        var myriaService = sp.GetService<IMyriaService>();
                         var directusService = sp.GetService<IDirectusService>();
                         var coinGeckoService = sp.GetService<ICoinGeckoService>();
                         
@@ -86,7 +96,8 @@ public class Program
                             sp.GetRequiredService<IDisplayService>(),
                             sp.GetRequiredService<IKeyPressHandlerService>(),
                             coinGeckoService,
-                            sp.GetRequiredService<IValueCalculationService>()
+                            sp.GetRequiredService<IValueCalculationService>(),
+                            sp.GetRequiredService<IExportService>()
                             );
                     });
                 }
