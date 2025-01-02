@@ -14,6 +14,12 @@ A .NET Core application that tracks cryptocurrency portfolio values across diffe
   - USD/USDT values (US format with commas)
   - NOK conversion using live exchange rates (Norwegian format with spaces)
   - BTC equivalent values
+- Data export and historical tracking:
+  - CSV and JSON formats
+  - Continuous data appending
+  - Separate value and total tracking
+  - Timestamp-based history
+  - Multiple currency conversions
 - Console-based UI:
   - Color-coded price changes
   - Detailed balance table with changes
@@ -77,6 +83,13 @@ Configuration is managed through `appsettings.json`:
   "CryptoTracking": {
     "UpdateIntervalMinutes": 30,
     "DemoMode": false
+  },
+  "Export": {
+    "Enabled": true,
+    "Format": "csv",  // csv, json
+    "ValuesFilename": "crypto-portfolio-values",
+    "TotalsFilename": "crypto-portfolio-totals",
+    "OutputPath": "exports"
   }
 }
 ```
@@ -89,6 +102,7 @@ The application is designed to work with any combination of these services:
 - **Directus**: Optional data persistence
 - **CoinGecko**: Optional token tracking for any listed cryptocurrency
 - **Manual Balances**: Optional static balance entries
+- **Export**: Optional data export to CSV or JSON
 
 ### CoinGecko Integration
 
@@ -175,7 +189,8 @@ Example POST body for coin values:
   "balance": 0.12345,
   "price": 65000.00,
   "value": 7995.00,
-  "source": "Binance"
+  "source": "Binance",
+  "btc_value": 0.12345678
 }
 ```
 
@@ -183,11 +198,105 @@ Example POST body for total value:
 
 ```json
 {
-  "total_value": 15449.68
+  "total_value": 15449.68,
+  "btc_value": 0.12345678
 }
 ```
 
 Note: The `date_created` field is automatically handled by Directus.
+
+### Data Export
+
+The application can continuously export portfolio data to files for historical tracking and analysis:
+
+#### Export Configuration
+
+```json
+{
+  "Export": {
+    "Enabled": true,
+    "Format": "csv",  // csv, json (excel coming soon)
+    "ValuesFilename": "crypto-portfolio-values",
+    "TotalsFilename": "crypto-portfolio-totals",
+    "OutputPath": "exports"
+  }
+}
+```
+
+#### Export Formats
+
+The application supports multiple export formats:
+
+##### CSV Format
+
+- Values file (`crypto-portfolio-values.csv`):
+
+```csv
+Timestamp,Asset,Balance,Price (USDT),Value (USDT),Value (NOK),Value (BTC),Source
+2024-01-01 12:00:00,BTC,0.123,65000.00,7995.00,83947.50,1.00000000,Binance
+2024-01-01 12:00:00,ETH,1.456,3400.00,4950.40,51979.20,0.06188000,Manual
+```
+
+- Totals file (`crypto-portfolio-totals.csv`):
+
+```csv
+Timestamp,Total (USDT),Total (NOK),Total (BTC)
+2024-01-01 12:00:00,12945.40,135926.70,1.06188000
+```
+
+###### JSON Format
+
+- Values file (`crypto-portfolio-values.json`):
+
+```json
+[
+  {
+    "Timestamp": "2024-01-01T12:00:00",
+    "Balances": [
+      {
+        "Asset": "BTC",
+        "Balance": 0.123,
+        "Price": 65000.00,
+        "UsdValue": 7995.00,
+        "NokValue": 83947.50,
+        "BtcValue": 1.00000000,
+        "Source": "Binance"
+      }
+    ]
+  }
+]
+```
+
+- Totals file (`crypto-portfolio-totals.json`):
+
+```json
+[
+  {
+    "Timestamp": "2024-01-01T12:00:00",
+    "UsdValue": 12945.40,
+    "NokValue": 135926.70,
+    "BtcValue": 1.06188000
+  }
+]
+```
+
+#### Export Features
+
+- Continuous data appending
+- Automatic file creation
+- Multiple format support
+- Separate files for values and totals
+- Timestamp tracking
+- Source attribution
+- Multi-currency values
+
+The exported data can be used for:
+
+- Historical analysis
+- Portfolio performance tracking
+- Data visualization
+- Custom reporting
+- Backup purposes
 
 ## Prerequisites
 
