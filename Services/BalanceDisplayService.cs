@@ -2,7 +2,13 @@ using System.Globalization;
 
 public class BalanceDisplayService : IDisplayService
 {
+    private readonly IValueCalculationService _valueCalculationService;
     private List<CoinBalance> _previousBalances = [];
+
+    public BalanceDisplayService(IValueCalculationService valueCalculationService)
+    {
+        _valueCalculationService = valueCalculationService;
+    }
 
     public void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdToNokRate, decimal btcPrice)
     {
@@ -27,7 +33,7 @@ public class BalanceDisplayService : IDisplayService
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
 
-            var nokValue = balance.Value * usdToNokRate;
+            var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
             var valueChange = previousBalance != null ? balance.Value - previousBalance.Value : 0;
             var percentChange = previousBalance?.Value > 0 ? (valueChange / previousBalance.Value) * 100 : 0;
 
@@ -60,12 +66,12 @@ public class BalanceDisplayService : IDisplayService
         var nokCulture = new CultureInfo("nb-NO");
 
         var totalValue = currentBalances.Sum(b => b.Value);
-        var totalNokValue = totalValue * usdToNokRate;
-        var totalBtcValue = btcPrice > 0 ? totalValue / btcPrice : 0;
+        var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+        var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
 
         var previousTotal = _previousBalances.Sum(b => b.Value);
-        var previousNokTotal = previousTotal * usdToNokRate;
-        var previousBtcTotal = btcPrice > 0 ? previousTotal / btcPrice : 0;
+        var previousNokTotal = _valueCalculationService.CalculateNokValue(previousTotal, usdToNokRate);
+        var previousBtcTotal = _valueCalculationService.CalculateBtcValue(previousTotal, btcPrice);
 
         var usdChange = totalValue - previousTotal;
         var nokChange = totalNokValue - previousNokTotal;
