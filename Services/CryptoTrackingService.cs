@@ -18,6 +18,7 @@ public class CryptoTrackingService : IHostedService
     private readonly IKeyPressHandlerService _keyPressHandler;
     private readonly ICoinGeckoService? _coinGeckoService;
     private readonly IValueCalculationService _valueCalculationService;
+    private readonly IExportService _exportService;
 
     public CryptoTrackingService(
         IBinanceService binanceService,
@@ -29,7 +30,8 @@ public class CryptoTrackingService : IHostedService
         IDisplayService balanceDisplayService,
         IKeyPressHandlerService keyPressHandler,
         ICoinGeckoService? coinGeckoService,
-        IValueCalculationService valueCalculationService)
+        IValueCalculationService valueCalculationService,
+        IExportService exportService)
     {
         _binanceService = binanceService;
         _directusService = directusService;
@@ -41,6 +43,7 @@ public class CryptoTrackingService : IHostedService
         _keyPressHandler = keyPressHandler;
         _coinGeckoService = coinGeckoService;
         _valueCalculationService = valueCalculationService;
+        _exportService = exportService;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -84,6 +87,10 @@ public class CryptoTrackingService : IHostedService
             var btcPrice = allBalances.FirstOrDefault(b => b.Asset == "BTC")?.Price ?? 0;
             _balanceDisplayService.DisplayBalances(allBalances, usdToNokRate, btcPrice);
 
+            if(_exportService != null)
+            {
+                await _exportService.ExportBalancesAsync(allBalances, usdToNokRate, btcPrice);
+            }
             // Only send to Directus if service is available
             if (_directusService != null)
             {
