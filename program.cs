@@ -82,10 +82,12 @@ public class Program
                     
                     services.AddSingleton<IHostedService>(sp =>
                     {
+                        // Optional services
                         var myriaService = sp.GetService<IMyriaService>();
                         var directusService = sp.GetService<IDirectusService>();
                         var coinGeckoService = sp.GetService<ICoinGeckoService>();
-                        
+                        var exportService = sp.GetService<IExportService>();
+
                         return new CryptoTrackingService(
                             sp.GetRequiredService<IBinanceService>(),
                             directusService,
@@ -97,7 +99,7 @@ public class Program
                             sp.GetRequiredService<IKeyPressHandlerService>(),
                             coinGeckoService,
                             sp.GetRequiredService<IValueCalculationService>(),
-                            sp.GetRequiredService<IExportService>()
+                            exportService
                             );
                     });
                 }
