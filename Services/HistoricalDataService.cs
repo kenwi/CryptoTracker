@@ -78,6 +78,33 @@ public class HistoricalDataService : IHistoricalDataService
         }
     }
 
+    public async Task ViewTotalsAsync(HistoricalTotalsViewOptions options)
+    {
+        try
+        {
+            if (!File.Exists(options.FilePath))
+            {
+                _logger.LogError("File not found: {FilePath}", options.FilePath);
+                return;
+            }
+
+            var lines = await File.ReadAllLinesAsync(options.FilePath);
+            if (lines.Length < 2)
+            {
+                _logger.LogError("File contains no data");
+                return;
+            }
+
+            var totals = ParseTotalsCsv(lines);
+            var filteredTotals = FilterTotals(totals, options);
+            DisplayTotals(filteredTotals);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing historical totals");
+        }
+    }
+
     private List<HistoricalDataEntry> ParseCsvData(string[] lines)
     {
         var data = new List<HistoricalDataEntry>();
@@ -167,6 +194,80 @@ public class HistoricalDataService : IHistoricalDataService
                 $"{entry.NokValue.ToString("F2", nokCulture),-13} | " +
                 $"{entry.BtcValue.ToString("F8", usCulture),-13} | " +
                 $"{entry.Source}");
+        }
+    }
+
+    private List<PortfolioTotal> ParseTotalsCsv(string[] lines)
+    {
+        var totals = new List<PortfolioTotal>();
+        var header = lines[0].Split(',');
+        var culture = new CultureInfo("en-US")
+        {
+            NumberFormat = 
+            { 
+                NumberDecimalSeparator = ".",
+                NumberGroupSeparator = ""
+            }
+        };
+
+        for (int i = 1; i < lines.Length; i++)
+        {
+            try
+            {
+                var values = lines[i].Split(',');
+                if (values.Length != header.Length) continue;
+
+                totals.Add(new PortfolioTotal
+                {
+                    Timestamp = DateTime.Parse(values[0]),
+                    UsdValue = decimal.Parse(values[1], NumberStyles.Any, culture),
+                    NokValue = decimal.Parse(values[2], NumberStyles.Any, culture),
+                    BtcValue = decimal.Parse(values[3], NumberStyles.Any, culture)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse line {LineNumber}: {Line}", i + 1, lines[i]);
+            }
+        }
+
+        return totals;
+    }
+
+    private IEnumerable<PortfolioTotal> FilterTotals(
+        List<PortfolioTotal> totals, 
+        HistoricalTotalsViewOptions options)
+    {
+        var query = totals.AsEnumerable();
+
+        query = options.Reverse 
+            ? query.OrderByDescending(t => t.Timestamp)
+            : query.OrderBy(t => t.Timestamp);
+
+        if (options.Limit > 0)
+        {
+            query = query.Take(options.Limit);
+        }
+
+        return query;
+    }
+
+    private void DisplayTotals(IEnumerable<PortfolioTotal> totals)
+    {
+        var usCulture = new CultureInfo("en-US");
+        var nokCulture = new CultureInfo("nb-NO");
+
+        Console.WriteLine("\nPortfolio Totals:");
+        Console.WriteLine("Timestamp           | Total (USDT)     | Total (NOK)      | Total (BTC)");
+        Console.WriteLine("------------------------------------------------------------------------");
+
+        foreach (var total in totals)
+        {
+            Console.WriteLine(
+                $"{total.Timestamp:yyyy-MM-dd HH:mm:ss} | " +
+                $"{total.UsdValue.ToString("N2", usCulture),-16} | " +
+                $"{total.NokValue.ToString("N2", nokCulture),-16} | " +
+                $"{total.BtcValue.ToString("F8", usCulture)}");
         }
     }
 }
