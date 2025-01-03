@@ -159,6 +159,32 @@ dotnet run view-history --help
 dotnet run list-assets --help
 ```
 
+### View Portfolio Totals
+
+View historical portfolio total values:
+
+```bash
+# View all portfolio totals
+dotnet run view-totals --file exports/crypto-portfolio-totals.csv
+
+# View most recent totals first
+dotnet run view-totals --file exports/crypto-portfolio-totals.csv --reverse
+
+# View last 10 totals
+dotnet run view-totals --file exports/crypto-portfolio-totals.csv --limit 10 --reverse
+```
+
+Example output:
+
+```text
+Portfolio Totals:
+Timestamp           | Total (USDT)     | Total (NOK)      | Total (BTC)
+------------------------------------------------------------------------
+2025-01-02 17:43:08 | 24,226.50        | 275 697.59       | 0.24891647
+2025-01-02 18:13:07 | 24,179.42        | 275 161.77       | 0.24807927
+2025-01-02 18:43:07 | 23,936.19        | 272 393.89       | 0.24803614
+```
+
 ### Optional Services
 
 The application is designed to work with any combination of these services:

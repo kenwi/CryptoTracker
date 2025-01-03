@@ -21,6 +21,7 @@ public class Program
         var rootCommand = new RootCommand("Crypto Portfolio Tracker");
         rootCommand.AddCommand(new ViewHistoricalDataCommand());
         rootCommand.AddCommand(new ListAssetsCommand());
+        rootCommand.AddCommand(new ViewTotalsCommand());
 
         return await rootCommand.InvokeAsync(args);
     }
