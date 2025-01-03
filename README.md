@@ -370,3 +370,64 @@ Feel free to submit issues and enhancement requests!
 ## License
 
 [MIT License](LICENSE)
+
+## Command-Line Features
+
+The application supports various command-line operations for analyzing historical data:
+
+### View Historical Data
+
+View and filter historical portfolio data from exported CSV files:
+
+```bash
+# View all historical data
+dotnet run view-history --file exports/crypto-portfolio-values.csv
+
+# Filter by specific asset
+dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC
+
+# Filter by asset and source
+dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC --source Binance
+
+# Limit number of entries shown
+dotnet run view-history --file exports/crypto-portfolio-values.csv --limit 50
+```
+
+Example output:
+
+```text
+Historical Data:
+Timestamp           | Asset | Balance      | Price (USDT)  | Value (USDT)  | Value (NOK)   | Value (BTC)   | Source
+-------------------------------------------------------------------------------------------------------------------
+2024-01-01 12:00:00 | BTC   | 0.123        | 65000.000     | 7995.00       | 83947.50      | 1.00000000    | Binance
+2024-01-01 12:30:00 | BTC   | 0.123        | 65500.000     | 8056.50       | 84593.25      | 1.00000000    | Binance
+```
+
+### List Available Assets
+
+View all unique assets and their sources in the exported data:
+
+```bash
+dotnet run list-assets --file exports/crypto-portfolio-values.csv
+```
+
+Example output:
+
+```text
+Available Assets:
+Asset | Source
+----------------
+ADA   | Binance
+BTC   | Binance
+ETH   | Manual
+MYRIA | Myria
+```
+
+### Command Help
+
+Each command supports the `--help` option for detailed usage information:
+
+```bash
+dotnet run view-history --help
+dotnet run list-assets --help
+```
