@@ -3,13 +3,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.CommandLine;
 
 public class Program
 {
-    static async Task Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
-        var host = CreateHostBuilder(args).Build();
-        await host.RunAsync();
+        if (args.Length == 0)
+        {
+            // Run normal application
+            var host = CreateHostBuilder(args).Build();
+            await host.RunAsync();
+            return 0;
+        }
+
+        // Setup command line interface
+        var rootCommand = new RootCommand("Crypto Portfolio Tracker");
+        rootCommand.AddCommand(new ViewHistoricalDataCommand());
+        rootCommand.AddCommand(new ListAssetsCommand());
+
+        return await rootCommand.InvokeAsync(args);
     }
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
