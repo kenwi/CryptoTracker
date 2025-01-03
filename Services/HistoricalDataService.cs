@@ -135,7 +135,16 @@ public class HistoricalDataService : IHistoricalDataService
             query = query.Where(d => d.Source.Equals(options.SourceFilter, StringComparison.OrdinalIgnoreCase));
         }
 
-        return query.OrderBy(d => d.Timestamp);
+        query = options.Reverse 
+            ? query.OrderByDescending(d => d.Timestamp)
+            : query.OrderBy(d => d.Timestamp);
+
+        if (options.Limit > 0)
+        {
+            query = query.Take(options.Limit);
+        }
+
+        return query;
     }
 
     private void DisplayHistoricalData(IEnumerable<HistoricalDataEntry> data)

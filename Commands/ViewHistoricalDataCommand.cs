@@ -28,26 +28,34 @@ public class ViewHistoricalDataCommand : Command
             description: "Limit the number of entries shown",
             getDefaultValue: () => 100);
 
+        var reverseOption = new Option<bool>(
+            name: "--reverse",
+            description: "Show entries in reverse chronological order",
+            getDefaultValue: () => false);
+
         AddOption(fileOption);
         AddOption(assetOption);
         AddOption(sourceOption);
         AddOption(limitOption);
+        AddOption(reverseOption);
 
-        this.SetHandler(HandleCommand, fileOption, assetOption, sourceOption, limitOption);
+        this.SetHandler(HandleCommand, fileOption, assetOption, sourceOption, limitOption, reverseOption);
     }
 
     private async Task HandleCommand(
         FileInfo file,
         string? asset,
         string? source,
-        int limit)
+        int limit,
+        bool reverse)
     {
         var options = new HistoricalDataViewOptions
         {
             FilePath = file.FullName,
             AssetFilter = asset,
             SourceFilter = source,
-            Limit = limit
+            Limit = limit,
+            Reverse = reverse
         };
 
         // Get IHistoricalDataService from DI and execute
