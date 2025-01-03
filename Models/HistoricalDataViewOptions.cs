@@ -4,4 +4,5 @@
     public string? AssetFilter { get; set; }
     public string? SourceFilter { get; set; }
     public int Limit { get; set; } = 100;
+    public bool Reverse { get; set; }
 }

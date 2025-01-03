@@ -110,14 +110,14 @@ View and filter historical portfolio data from exported CSV files:
 # View all historical data
 dotnet run view-history --file exports/crypto-portfolio-values.csv
 
-# Filter by specific asset
-dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC
+# View most recent entries first
+dotnet run view-history --file exports/crypto-portfolio-values.csv --reverse
 
-# Filter by asset and source
-dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC --source Binance
+# Filter by specific asset (most recent first)
+dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC --reverse
 
-# Limit number of entries shown
-dotnet run view-history --file exports/crypto-portfolio-values.csv --limit 50
+# Filter by asset and source (last 10 entries)
+dotnet run view-history --file exports/crypto-portfolio-values.csv --asset BTC --source Binance --limit 10 --reverse
 ```
 
 Example output:
