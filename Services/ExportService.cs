@@ -3,6 +3,9 @@ using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Globalization;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using System.Drawing;
 
 public class ExportService : IExportService
 {
@@ -36,7 +39,7 @@ public class ExportService : IExportService
             await (_config.Format.ToLower() switch
             {
                 "csv" => ExportToCsvAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
-                //"excel" => ExportToExcelAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
+                "xlsx" => ExportToExcelAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
                 "json" => ExportToJsonAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
                 _ => throw new ArgumentException($"Unsupported format: {_config.Format}")
             });
@@ -159,14 +162,223 @@ public class ExportService : IExportService
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(array, options));
     }
 
-    //private async Task ExportToExcelAsync(
-    //    IEnumerable<CoinBalance> balances, 
-    //    decimal usdToNokRate, 
-    //    decimal btcPrice, 
-    //    string valuesPath,
-    //    string totalsPath)
-    //{
-    //    // Requires NuGet package: EPPlus
-    //    throw new NotImplementedException("Excel export not yet implemented");
-    //}
+    private async Task ExportToExcelAsync(
+        IEnumerable<CoinBalance> balances, 
+        decimal usdToNokRate, 
+        decimal btcPrice, 
+        string valuesPath,
+        string totalsPath)
+    {
+        // Set EPPlus license context
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+        await ExportValuesToExcelAsync(balances, usdToNokRate, btcPrice, valuesPath);
+        await ExportTotalsToExcelAsync(balances, usdToNokRate, btcPrice, totalsPath);
+    }
+
+    private async Task ExportValuesToExcelAsync(
+        IEnumerable<CoinBalance> balances,
+        decimal usdToNokRate,
+        decimal btcPrice,
+        string path)
+    {
+        var timestamp = DateTime.Now;
+        var file = new FileInfo(path);
+        
+        try
+        {
+            // Create a temporary file path
+            var tempPath = Path.GetTempFileName();
+            _logger.LogDebug("Using temporary file: {TempPath}", tempPath);
+
+            // If the file exists, copy it to our temp location first
+            if (file.Exists)
+            {
+                File.Copy(file.FullName, tempPath, true);
+            }
+
+            using (var package = new ExcelPackage(new FileInfo(tempPath)))
+            {
+                _logger.LogDebug("Created Excel package");
+
+                var sheet = package.Workbook.Worksheets.FirstOrDefault() ?? 
+                           package.Workbook.Worksheets.Add("Portfolio Values");
+                _logger.LogDebug("Using worksheet: {SheetName}", sheet.Name);
+
+                // Add headers if sheet is new
+                if (sheet.Dimension == null)
+                {
+                    _logger.LogDebug("Adding headers to new sheet");
+                    string[] headers = { "Timestamp", "Asset", "Balance", "Price (USDT)", 
+                                       "Value (USDT)", "Value (NOK)", "Value (BTC)", "Source" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        sheet.Cells[1, i + 1].Value = headers[i];
+                    }
+
+                    // Style headers
+                    var headerRange = sheet.Cells[1, 1, 1, headers.Length];
+                    headerRange.Style.Font.Bold = true;
+                    headerRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    headerRange.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                }
+
+                // Get next row
+                int row = (sheet.Dimension?.Rows ?? 1) + 1;
+                _logger.LogDebug("Starting data entry at row: {Row}", row);
+
+                // Add new data
+                foreach (var balance in balances)
+                {
+                    var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
+                    var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
+
+                    sheet.Cells[row, 1].Value = timestamp;
+                    sheet.Cells[row, 2].Value = balance.Asset;
+                    sheet.Cells[row, 3].Value = balance.Balance;
+                    sheet.Cells[row, 4].Value = balance.Price;
+                    sheet.Cells[row, 5].Value = balance.Value;
+                    sheet.Cells[row, 6].Value = nokValue;
+                    sheet.Cells[row, 7].Value = btcValue;
+                    sheet.Cells[row, 8].Value = balance.Source;
+
+                    row++;
+                }
+
+                // Format columns
+                sheet.Column(1).Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
+                sheet.Column(3).Style.Numberformat.Format = "#,##0.000";
+                sheet.Column(4).Style.Numberformat.Format = "#,##0.000";
+                sheet.Column(5).Style.Numberformat.Format = "#,##0.00";
+                sheet.Column(6).Style.Numberformat.Format = "#,##0.00";
+                sheet.Column(7).Style.Numberformat.Format = "0.00000000";
+
+                sheet.Cells.AutoFitColumns();
+
+                _logger.LogDebug("Saving Excel package to temp file");
+                await package.SaveAsync();
+            }
+
+            // Ensure the target directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(file.FullName)!);
+
+            // Copy the temp file to the final destination
+            _logger.LogDebug("Copying from temp file to final destination");
+            File.Copy(tempPath, file.FullName, true);
+            
+            // Clean up temp file
+            File.Delete(tempPath);
+
+            if (File.Exists(file.FullName))
+            {
+                _logger.LogInformation("Successfully created Excel file at: {Path}", file.FullName);
+            }
+            else
+            {
+                _logger.LogError("Failed to verify file creation at: {Path}", file.FullName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export Excel file to {Path}", file.FullName);
+            throw;
+        }
+    }
+
+    private async Task ExportTotalsToExcelAsync(
+        IEnumerable<CoinBalance> balances,
+        decimal usdToNokRate,
+        decimal btcPrice,
+        string path)
+    {
+        var timestamp = DateTime.Now;
+        var file = new FileInfo(path);
+        
+        try
+        {
+            // Create a temporary file path
+            var tempPath = Path.GetTempFileName();
+            _logger.LogDebug("Using temporary file for totals: {TempPath}", tempPath);
+
+            // If the file exists, copy it to our temp location first
+            if (file.Exists)
+            {
+                File.Copy(file.FullName, tempPath, true);
+            }
+
+            using (var package = new ExcelPackage(new FileInfo(tempPath)))
+            {
+                _logger.LogDebug("Created Excel package for totals");
+
+                var sheet = package.Workbook.Worksheets.FirstOrDefault() ?? 
+                           package.Workbook.Worksheets.Add("Portfolio Totals");
+                _logger.LogDebug("Using worksheet: {SheetName}", sheet.Name);
+
+                // Add headers if sheet is new
+                if (sheet.Dimension == null)
+                {
+                    string[] headers = { "Timestamp", "Total (USDT)", "Total (NOK)", "Total (BTC)" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        sheet.Cells[1, i + 1].Value = headers[i];
+                    }
+
+                    // Style headers
+                    var headerRange = sheet.Cells[1, 1, 1, headers.Length];
+                    headerRange.Style.Font.Bold = true;
+                    headerRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    headerRange.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                }
+
+                // Get next row
+                int row = (sheet.Dimension?.Rows ?? 1) + 1;
+                _logger.LogDebug("Starting totals entry at row: {Row}", row);
+
+                // Calculate and add new totals
+                var totalValue = balances.Sum(b => b.Value);
+                var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+                var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
+
+                sheet.Cells[row, 1].Value = timestamp;
+                sheet.Cells[row, 2].Value = totalValue;
+                sheet.Cells[row, 3].Value = totalNokValue;
+                sheet.Cells[row, 4].Value = totalBtcValue;
+
+                // Format columns
+                sheet.Column(1).Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
+                sheet.Column(2).Style.Numberformat.Format = "#,##0.00";
+                sheet.Column(3).Style.Numberformat.Format = "#,##0.00";
+                sheet.Column(4).Style.Numberformat.Format = "0.00000000";
+
+                sheet.Cells.AutoFitColumns();
+
+                _logger.LogDebug("Saving totals Excel package to temp file");
+                await package.SaveAsync();
+            }
+
+            // Ensure the target directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(file.FullName)!);
+
+            // Copy the temp file to the final destination
+            _logger.LogDebug("Copying totals from temp file to final destination");
+            File.Copy(tempPath, file.FullName, true);
+            
+            // Clean up temp file
+            File.Delete(tempPath);
+
+            if (File.Exists(file.FullName))
+            {
+                _logger.LogInformation("Successfully created totals Excel file at: {Path}", file.FullName);
+            }
+            else
+            {
+                _logger.LogError("Failed to verify totals file creation at: {Path}", file.FullName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export totals Excel file to {Path}", file.FullName);
+            throw;
+        }
+    }
 } 
