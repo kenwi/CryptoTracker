@@ -15,7 +15,7 @@ A .NET Core application that tracks cryptocurrency portfolio values across diffe
   - NOK conversion using live exchange rates (Norwegian format with spaces)
   - BTC equivalent values
 - Data export and historical tracking:
-  - CSV and JSON formats
+  - CSV, JSON, and Excel formats
   - Continuous data appending
   - Separate value and total tracking
   - Timestamp-based history
@@ -90,7 +90,7 @@ Configuration is managed through `appsettings.json`:
   },
   "Export": {
     "Enabled": true,
-    "Format": "csv",  // csv, json
+    "Format": "xlsx",  // csv, json, xlsx
     "ValuesFilename": "crypto-portfolio-values",
     "TotalsFilename": "crypto-portfolio-totals",
     "OutputPath": "exports"
@@ -298,15 +298,19 @@ Note: The `date_created` field is automatically handled by Directus.
 
 ### Data Export
 
-The application can continuously export portfolio data to files for historical tracking and analysis:
+The application supports exporting portfolio data in multiple formats:
 
-#### Export Configuration
+- **CSV**: Simple text format, easily imported into spreadsheet software
+- **JSON**: Structured data format, good for programmatic access
+- **Excel**: Rich spreadsheet format with formatting and multiple sheets
+
+Configure the export format in `appsettings.json`:
 
 ```json
 {
   "Export": {
     "Enabled": true,
-    "Format": "csv",  // csv, json (excel coming soon)
+    "Format": "xlsx",  // csv, json, xlsx
     "ValuesFilename": "crypto-portfolio-values",
     "TotalsFilename": "crypto-portfolio-totals",
     "OutputPath": "exports"
@@ -314,11 +318,19 @@ The application can continuously export portfolio data to files for historical t
 }
 ```
 
-#### Export Formats
+Excel exports include:
+
+- Formatted dates and numbers
+- Separate sheets for values and totals
+- Automatic column sizing
+- Header styling
+- Continuous data appending
+
+### Export Formats
 
 The application supports multiple export formats:
 
-##### CSV Format
+#### CSV Format
 
 - Values file (`crypto-portfolio-values.csv`):
 
@@ -335,7 +347,7 @@ Timestamp,Total (USDT),Total (NOK),Total (BTC)
 2024-01-01 12:00:00,12945.40,135926.70,1.06188000
 ```
 
-###### JSON Format
+##### JSON Format
 
 - Values file (`crypto-portfolio-values.json`):
 
