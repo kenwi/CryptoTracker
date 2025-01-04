@@ -155,8 +155,54 @@ MYRIA | Myria
 Each command supports the `--help` option for detailed usage information:
 
 ```bash
-dotnet run view-history --help
-dotnet run list-assets --help
+$ dotnet run -- --help
+
+Description:
+  Crypto Portfolio Tracker
+
+Usage:
+  CryptoTracker [command] [options]
+
+Options:
+  --version       Show version information
+  -?, -h, --help  Show help and usage information
+
+Commands:
+  view-history  View historical portfolio data from CSV export
+  list-assets   List all unique assets and their sources from the historical data
+  view-totals   View historical portfolio totals from CSV export
+```
+
+```bash
+$ dotnet run -- view-history --help
+
+Description:
+  View historical portfolio data from CSV export
+
+Usage:
+  CryptoTracker view-history [options]
+
+Options:
+  --file <file> (REQUIRED)  Path to the CSV file containing historical data
+  --asset <asset>           Filter by asset symbol (e.g., BTC)
+  --source <source>         Filter by source (e.g., Binance)
+  --limit <limit>           Limit the number of entries shown [default: 100]
+  --reverse                 Show entries in reverse chronological order [default: False]
+  -?, -h, --help            Show help and usage information
+```
+
+```bash
+$ dotnet run -- list-assets --help
+
+Description:
+  List all unique assets and their sources from the historical data
+
+Usage:
+  CryptoTracker list-assets [options]
+
+Options:
+  --file <file> (REQUIRED)  Path to the CSV file containing historical data
+  -?, -h, --help            Show help and usage information
 ```
 
 ### View Portfolio Totals
