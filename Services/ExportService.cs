@@ -6,6 +6,8 @@ using System.Globalization;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using OfficeOpenXml.Drawing;
+using OfficeOpenXml.Drawing.Chart;
 
 public class ExportService : IExportService
 {
@@ -253,6 +255,91 @@ public class ExportService : IExportService
                 sheet.Column(6).Style.Numberformat.Format = "#,##0.00";
                 sheet.Column(7).Style.Numberformat.Format = "0.00000000";
 
+                // Convert range to table if it isn't already
+                if (!sheet.Tables.Any())
+                {
+                    var dimension = sheet.Dimension;
+                    if (dimension != null)
+                    {
+                        var dataRange = sheet.Cells[1, 1, dimension.End.Row, dimension.End.Column];
+                        var table = sheet.Tables.Add(dataRange, "PortfolioValues");
+                        table.ShowHeader = true;
+                        table.TableStyle = OfficeOpenXml.Table.TableStyles.Medium2;
+                    }
+                }
+                else
+                {
+                    // Update existing table range
+                    var table = sheet.Tables[0];
+                    var dimension = sheet.Dimension;
+                    if (dimension != null && table != null)
+                    {
+                        table.AddRow(dimension.End.Row - table.Address.End.Row);
+                    }
+                }
+
+                // Add or update chart if it doesn't exist
+                if (!sheet.Drawings.Any(d => d.Name == "AssetValuesChart"))
+                {
+                    _logger.LogDebug("Updating existing asset values chart");
+                    
+                    // Remove existing chart
+                    var existingChart = sheet.Drawings.FirstOrDefault(d => d.Name == "AssetValuesChart");
+                    if (existingChart != null)
+                    {
+                        sheet.Drawings.Remove(existingChart);
+                    }
+
+                    // Calculate chart position (to the right of the data)
+                    var lastColumn = sheet.Dimension?.End.Column ?? 8; // Default to 8 if null
+                    var chartStartColumn = lastColumn + 1; // Start one column after the data
+                    
+                    var chart = sheet.Drawings.AddChart("AssetValuesChart", eChartType.Line);
+                    
+                    // Position the chart (row 1, next to last column)
+                    chart.SetPosition(0, 0, chartStartColumn, 0);
+                    chart.SetSize(800, 400);
+                    
+                    // Configure the chart
+                    chart.Title.Text = "Asset Values (NOK) Over Time";
+                    chart.XAxis.Title.Text = "Date";
+                    chart.YAxis.Title.Text = "NOK Value";
+                    
+                    // Add the data series grouped by Asset
+                    var dimension = sheet.Dimension;
+                    if (dimension != null)
+                    {
+                        var assets = sheet.Cells[2, 2, dimension.End.Row, 2]
+                            .Select(c => c.Value?.ToString())
+                            .Where(v => !string.IsNullOrEmpty(v))
+                            .Distinct();
+
+                        foreach (var asset in assets)
+                        {
+                            var assetRows = Enumerable.Range(2, dimension.End.Row - 1)
+                                .Where(r => sheet.Cells[r, 2].Value?.ToString() == asset)
+                                .ToList();
+
+                            if (!assetRows.Any()) continue;
+
+                            var nokValues = sheet.Cells[assetRows[0], 6, assetRows[^1], 6];
+                            var timestamps = sheet.Cells[assetRows[0], 1, assetRows[^1], 1];
+
+                            var series = chart.Series.Add(nokValues, timestamps);
+                            series.Header = asset;
+                        }
+                    }
+                    
+                    // Format axis
+                    chart.XAxis.Format = "dd-MMM-yy";
+                    chart.YAxis.Format = "#,##0";
+                    chart.YAxis.MajorGridlines.Fill.Color = System.Drawing.Color.LightGray;
+                    
+                    // Style the chart
+                    chart.Style = eChartStyle.Style2;
+                    chart.Legend.Position = eLegendPosition.Right;
+                }
+
                 sheet.Cells.AutoFitColumns();
 
                 _logger.LogDebug("Saving Excel package to temp file");
@@ -351,6 +438,66 @@ public class ExportService : IExportService
                 sheet.Column(4).Style.Numberformat.Format = "0.00000000";
 
                 sheet.Cells.AutoFitColumns();
+
+                // Add or update chart if it doesn't exist
+                if (!sheet.Drawings.Any(d => d.Name == "PortfolioChart"))
+                {
+                    _logger.LogDebug("Adding portfolio value chart");
+                    
+                    // Calculate chart position (to the right of the data)
+                    var lastColumn = sheet.Dimension?.End.Column ?? 4; // Default to 4 if null
+                    var chartStartColumn = lastColumn + 1; // Start one column after the data
+                    
+                    var chart = sheet.Drawings.AddChart("PortfolioChart", eChartType.Line);
+                    
+                    // Position the chart (row 1, next to last column)
+                    chart.SetPosition(0, 0, chartStartColumn, 0);
+                    chart.SetSize(800, 400);
+                    
+                    // Configure the chart
+                    chart.Title.Text = "Portfolio Value (NOK) Over Time";
+                    chart.XAxis.Title.Text = "Date";
+                    chart.YAxis.Title.Text = "NOK Value";
+                    
+                    // Add the data series
+                    var lastRow = sheet.Dimension?.End.Row ?? 2; // Default to 2 if null
+                    var nokValues = sheet.Cells[2, 3, lastRow, 3]; // NOK values (column C)
+                    var timestamps = sheet.Cells[2, 1, lastRow, 1]; // Timestamps (column A)
+                    
+                    var series = chart.Series.Add(nokValues, timestamps);
+                    series.Header = "NOK Value";
+                    
+                    // Style the series
+                    series.Fill.Color = System.Drawing.Color.FromArgb(91, 155, 213); // Blue
+                    series.Border.Fill.Color = System.Drawing.Color.FromArgb(91, 155, 213);
+                    
+                    // Format axis
+                    chart.XAxis.Format = "dd-MMM-yy";
+                    chart.YAxis.Format = "#,##0";
+                    chart.YAxis.MajorGridlines.Fill.Color = System.Drawing.Color.LightGray;
+                    
+                    // Style the chart
+                    chart.Style = eChartStyle.Style2;
+                    chart.Legend.Position = eLegendPosition.Bottom;
+                }
+                else
+                {
+                    _logger.LogDebug("Updating existing portfolio value chart");
+                    
+                    // Get existing chart
+                    var chart = sheet.Drawings.FirstOrDefault(d => d.Name == "PortfolioChart") as ExcelLineChart;
+                    if (chart != null)
+                    {
+                        // Update the data range
+                        var lastRow = sheet.Dimension?.End.Row ?? 2; // Default to 2 if null
+                        var nokValues = sheet.Cells[2, 3, lastRow, 3]; // NOK values (column C)
+                        var timestamps = sheet.Cells[2, 1, lastRow, 1]; // Timestamps (column A)
+                        
+                        var series = chart.Series[0];
+                        series.Series = nokValues.FullAddress;
+                        series.XSeries = timestamps.FullAddress;
+                    }
+                }
 
                 _logger.LogDebug("Saving totals Excel package to temp file");
                 await package.SaveAsync();

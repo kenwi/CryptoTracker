@@ -348,7 +348,13 @@ The application supports exporting portfolio data in multiple formats:
 
 - **CSV**: Simple text format, easily imported into spreadsheet software
 - **JSON**: Structured data format, good for programmatic access
-- **Excel**: Rich spreadsheet format with formatting and multiple sheets
+- **Excel**: Rich spreadsheet format with data visualization
+  - Portfolio Values sheet:
+    - Sortable table with all asset data
+    - Line chart showing NOK value over time for each asset
+  - Portfolio Totals sheet:
+    - Historical total values in all currencies
+    - Line chart showing total portfolio value over time in NOK
 
 Configure the export format in `appsettings.json`:
 
@@ -356,7 +362,7 @@ Configure the export format in `appsettings.json`:
 {
   "Export": {
     "Enabled": true,
-    "Format": "xlsx",  // csv, json, xlsx
+    "Format": "xlsx", // Options: csv, json, xlsx
     "ValuesFilename": "crypto-portfolio-values",
     "TotalsFilename": "crypto-portfolio-totals",
     "OutputPath": "exports"
