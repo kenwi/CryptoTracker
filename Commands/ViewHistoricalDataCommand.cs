@@ -67,6 +67,10 @@ public class ViewHistoricalDataCommand : Command
     private static IHost CreateHost()
     {
         return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((hostContext, config) =>
+            {
+                ConfigurationSetup.Configure(config);
+            })
             .ConfigureServices((context, services) =>
             {
                 services.AddSingleton<IHistoricalDataService, HistoricalDataService>();

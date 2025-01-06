@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
 using System.CommandLine;
 
 public class Program
@@ -22,12 +23,17 @@ public class Program
         rootCommand.AddCommand(new ViewHistoricalDataCommand());
         rootCommand.AddCommand(new ListAssetsCommand());
         rootCommand.AddCommand(new ViewTotalsCommand());
+        //rootCommand.AddCommand(new ConvertCsvToExcelCommand());
 
         return await rootCommand.InvokeAsync(args);
     }
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((hostContext, config) =>
+            {
+                ConfigurationSetup.Configure(config);
+            })
             .ConfigureServices((context, services) =>
             {
                 // Configuration
