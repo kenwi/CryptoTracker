@@ -16,8 +16,8 @@ public class BalanceDisplayService : IDisplayService
         var nokCulture = new CultureInfo("nb-NO");
 
         Console.WriteLine($"\n{DateTime.Now:G}");
-        Console.WriteLine("Coin     | Balance      | Price           | Value (USDT)      | Value (NOK)       | Change (USDT)  | Change % | Source");
-        Console.WriteLine("-------------------------------------------------------------------------------------------------------------------------");
+        Console.WriteLine("Coin     | Balance      | Price            | Value (USDT)      | Value (NOK)       | Change (USDT)  | Change % | Source");
+        Console.WriteLine("--------------------------------------------------------------------------------------------------------------------------");
 
         foreach (var balance in currentBalances)
         {
@@ -45,7 +45,7 @@ public class BalanceDisplayService : IDisplayService
                 : "";
 
             Console.WriteLine(
-                "{0,-8} | {1,-12:F3} | {2,-15} | {3,-17} | {4,-17} | {5,-14} | {6,-8} | {7}",
+                "{0,-8} | {1,-12:F3} | {2,-16} | {3,-17} | {4,-17} | {5,-14} | {6,-8} | {7}",
                 balance.Asset,
                 balance.Balance,
                 $"{balance.Price.ToString("N3", usCulture)} USDT",
