@@ -73,7 +73,23 @@ public class CryptoTrackingService : IHostedService
         {
             var usdToNokRate = await _exchangeRateService.GetUsdToNokRateAsync();
             var manualBalances = GetManualBalances();
-            var binanceBalances = await _binanceService.GetDetailedBalancesAsync(manualBalances);
+
+            // Try to get Binance balances with retries
+            List<CoinBalance> binanceBalances;
+            try
+            {
+                binanceBalances = (await RetryWithBackoff(
+                    async () => await _binanceService.GetDetailedBalancesAsync(manualBalances),
+                    maxAttempts: 3,
+                    initialDelayMs: 1000))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch Binance balances after retries");
+                // Skip this update cycle if we can't get Binance data
+                return;
+            }
 
             var allBalances = new List<CoinBalance>();
             allBalances.AddRange(binanceBalances);
@@ -81,8 +97,26 @@ public class CryptoTrackingService : IHostedService
             // Only add CoinGecko balances if service is available
             if (_coinGeckoService != null)
             {
-                var geckoBalances = await _coinGeckoService.GetBalancesAsync();
-                allBalances.AddRange(geckoBalances);
+                try
+                {
+                    var geckoBalances = await RetryWithBackoff(
+                        async () => await _coinGeckoService.GetBalancesAsync(),
+                        maxAttempts: 3,
+                        initialDelayMs: 1000);
+                    allBalances.AddRange(geckoBalances);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch CoinGecko balances after retries");
+                    // Continue with just Binance balances if CoinGecko fails
+                }
+            }
+
+            // Only proceed if we have any balances
+            if (!allBalances.Any())
+            {
+                _logger.LogWarning("No balances retrieved from any source. Skipping update.");
+                return;
             }
 
             var btcPrice = allBalances.FirstOrDefault(b => b.Asset == "BTC")?.Price ?? 0;
@@ -120,6 +154,34 @@ public class CryptoTrackingService : IHostedService
         {
             _logger.LogError(ex, "Error occurred while processing crypto values");
         }
+    }
+
+    private async Task<T> RetryWithBackoff<T>(
+        Func<Task<T>> operation,
+        int maxAttempts,
+        int initialDelayMs)
+    {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex)
+            {
+                if (attempt == maxAttempts)
+                    throw;
+
+                var delayMs = initialDelayMs * Math.Pow(2, attempt - 1);
+                _logger.LogWarning(ex, 
+                    "Attempt {Attempt} failed. Retrying in {Delay}ms...", 
+                    attempt, delayMs);
+                
+                await Task.Delay((int)delayMs);
+            }
+        }
+
+        throw new Exception($"Failed after {maxAttempts} attempts");
     }
 
     private List<BinanceBalance> GetManualBalances() =>
