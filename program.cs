@@ -77,8 +77,12 @@ public class Program
                 }
                 else
                 {
-                    services.AddSingleton<IBinanceService, BinanceService>();
-                    
+                    var binanceConfig = context.Configuration.GetSection("Binance").Get<BinanceConfig>();
+                    if(binanceConfig is not null)
+                    {
+                        services.AddSingleton<IBinanceService, BinanceService>();
+                    }
+
                     // Only add DirectusService if config section exists and is enabled
                     var directusConfig = context.Configuration.GetSection("Directus").Get<DirectusConfig>();
                     if (directusConfig?.Enabled == true)
@@ -107,9 +111,10 @@ public class Program
                         var directusService = sp.GetService<IDirectusService>();
                         var coinGeckoService = sp.GetService<ICoinGeckoService>();
                         var exportService = sp.GetService<IExportService>();
+                        var binanceService = sp.GetService<IBinanceService>();
 
                         return new CryptoTrackingService(
-                            sp.GetRequiredService<IBinanceService>(),
+                            binanceService,
                             directusService,
                             sp.GetRequiredService<IExchangeRateService>(),
                             sp.GetRequiredService<ILogger<CryptoTrackingService>>(),
