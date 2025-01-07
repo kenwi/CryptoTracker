@@ -6,7 +6,7 @@ using System.Linq;
 
 public class CryptoTrackingService : IHostedService
 {
-    private readonly IBinanceService _binanceService;
+    private readonly IBinanceService? _binanceService;
     private readonly IDirectusService? _directusService;
     private readonly IExchangeRateService _exchangeRateService;
     private readonly ILogger<CryptoTrackingService> _logger;
@@ -21,7 +21,7 @@ public class CryptoTrackingService : IHostedService
     private readonly IExportService? _exportService;
 
     public CryptoTrackingService(
-        IBinanceService binanceService,
+        IBinanceService? binanceService,
         IDirectusService? directusService,
         IExchangeRateService exchangeRateService,
         ILogger<CryptoTrackingService> logger,
@@ -75,27 +75,30 @@ public class CryptoTrackingService : IHostedService
             var manualBalances = GetManualBalances();
 
             // Try to get Binance balances with retries
-            List<CoinBalance> binanceBalances;
-            try
+            List<CoinBalance> binanceBalances = new List<CoinBalance>();
+            if (_binanceService is not null)
             {
-                binanceBalances = (await RetryWithBackoff(
-                    async () => await _binanceService.GetDetailedBalancesAsync(manualBalances),
-                    maxAttempts: 3,
-                    initialDelayMs: 1000))
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to fetch Binance balances after retries");
-                // Skip this update cycle if we can't get Binance data
-                return;
+                try
+                {
+                    binanceBalances = (await RetryWithBackoff(
+                        async () => await _binanceService.GetDetailedBalancesAsync(manualBalances),
+                        maxAttempts: 3,
+                        initialDelayMs: 1000))
+                        .ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch Binance balances after retries");
+                    // Skip this update cycle if we can't get Binance data
+                    return;
+                }
             }
 
             var allBalances = new List<CoinBalance>();
             allBalances.AddRange(binanceBalances);
 
             // Only add CoinGecko balances if service is available
-            if (_coinGeckoService != null)
+            if (_coinGeckoService is not null)
             {
                 try
                 {
@@ -123,13 +126,13 @@ public class CryptoTrackingService : IHostedService
             _balanceDisplayService.DisplayBalances(allBalances, usdToNokRate, btcPrice);
 
             // Only export if service is available
-            if(_exportService != null)
+            if(_exportService is not null)
             {
                 await _exportService.ExportBalancesAsync(allBalances, usdToNokRate, btcPrice);
             }
             
             // Only send to Directus if service is available
-            if (_directusService != null)
+            if (_directusService is not null)
             {
                 var tasks = allBalances.Select(balance =>
                 {

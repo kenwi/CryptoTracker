@@ -5,9 +5,9 @@ public static class ConfigurationSetup
     public static void Configure(IConfigurationBuilder config)
     {
         // Clear any existing configuration sources
-        if (config is IConfigurationBuilder configBuilder)
+        if (config is IConfigurationBuilder)
         {
-            configBuilder.Sources.Clear();
+            config.Sources.Clear();
         }
 
         var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
