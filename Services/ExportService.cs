@@ -12,38 +12,41 @@ using OfficeOpenXml.Drawing.Chart;
 public class ExportService : IExportService
 {
     private readonly ILogger<ExportService> _logger;
-    private readonly ExportConfig _config;
+    private readonly ExportConfig _exportConfig;
+    private readonly ExchangeRateConfig _exchangeRateConfig;
     private readonly IValueCalculationService _valueCalculationService;
 
     public ExportService(
         ILogger<ExportService> logger,
-        IOptions<ExportConfig> config,
+        IOptions<ExportConfig> exportConfig,
+        IOptions<ExchangeRateConfig> exchangeRateConfig,
         IValueCalculationService valueCalculationService)
     {
         _logger = logger;
-        _config = config.Value;
+        _exportConfig = exportConfig.Value;
+        _exchangeRateConfig = exchangeRateConfig.Value;
         _valueCalculationService = valueCalculationService;
     }
 
     public async Task ExportBalancesAsync(
         IEnumerable<CoinBalance> balances, 
-        decimal usdToNokRate, 
+        decimal usdExchangeRate, 
         decimal btcPrice)
     {
-        if (!_config.Enabled) return;
+        if (!_exportConfig.Enabled) return;
 
         try
         {
-            Directory.CreateDirectory(_config.OutputPath);
-            var valuesPath = Path.Combine(_config.OutputPath, $"{_config.ValuesFilename}.{_config.Format}");
-            var totalsPath = Path.Combine(_config.OutputPath, $"{_config.TotalsFilename}.{_config.Format}");
+            Directory.CreateDirectory(_exportConfig.OutputPath);
+            var valuesPath = Path.Combine(_exportConfig.OutputPath, $"{_exportConfig.ValuesFilename}.{_exportConfig.Format}");
+            var totalsPath = Path.Combine(_exportConfig.OutputPath, $"{_exportConfig.TotalsFilename}.{_exportConfig.Format}");
 
-            await (_config.Format.ToLower() switch
+            await (_exportConfig.Format.ToLower() switch
             {
-                "csv" => ExportToCsvAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
-                "xlsx" => ExportToExcelAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
-                "json" => ExportToJsonAsync(balances, usdToNokRate, btcPrice, valuesPath, totalsPath),
-                _ => throw new ArgumentException($"Unsupported format: {_config.Format}")
+                "csv" => ExportToCsvAsync(balances, usdExchangeRate, btcPrice, valuesPath, totalsPath),
+                "xlsx" => ExportToExcelAsync(balances, usdExchangeRate, btcPrice, valuesPath, totalsPath),
+                "json" => ExportToJsonAsync(balances, usdExchangeRate, btcPrice, valuesPath, totalsPath),
+                _ => throw new ArgumentException($"Unsupported format: {_exportConfig.Format}")
             });
 
             _logger.LogInformation("Exported portfolio to {ValuesPath} and {TotalsPath}", valuesPath, totalsPath);
@@ -56,7 +59,7 @@ public class ExportService : IExportService
 
     private async Task ExportToCsvAsync(
         IEnumerable<CoinBalance> balances, 
-        decimal usdToNokRate, 
+        decimal usdExchangeRate, 
         decimal btcPrice, 
         string valuesPath,
         string totalsPath)
@@ -69,12 +72,12 @@ public class ExportService : IExportService
         var valueLines = new List<string>();
         if (!File.Exists(valuesPath))
         {
-            valueLines.Add("Timestamp,Asset,Balance,Price (USDT),Value (USDT),Value (NOK),Value (BTC),Source");
+            valueLines.Add($"Timestamp,Asset,Balance,Price (USDT),Value (USDT),Value ({_exchangeRateConfig.Currency}),Value (BTC),Source");
         }
 
         foreach (var balance in balances)
         {
-            var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
+            var currencyValue = _valueCalculationService.CalculateCurrencyValue(balance.Value, usdExchangeRate);
             var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
 
             valueLines.Add($"{balance.Timestamp:yyyy-MM-dd HH:mm:ss}," +
@@ -82,7 +85,7 @@ public class ExportService : IExportService
                           $"{balance.Balance.ToString("F3", usCulture)}," +
                           $"{balance.Price.ToString("F3", usCulture)}," +
                           $"{balance.Value.ToString("F2", usCulture)}," +
-                          $"{nokValue.ToString("F2", usCulture)}," +
+                          $"{currencyValue.ToString("F2", usCulture)}," +
                           $"{btcValue.ToString("F8", usCulture)}," +
                           $"{balance.Source}");
         }
@@ -93,16 +96,16 @@ public class ExportService : IExportService
         var totalLines = new List<string>();
         if (!File.Exists(totalsPath))
         {
-            totalLines.Add("Timestamp,Total (USDT),Total (NOK),Total (BTC)");
+            totalLines.Add($"Timestamp,Total (USDT),Total ({_exchangeRateConfig.Currency}),Total (BTC)");
         }
 
         var totalValue = balances.Sum(b => b.Value);
-        var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+        var totalCurrencyValue = _valueCalculationService.CalculateCurrencyValue(totalValue, usdExchangeRate);
         var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
 
         totalLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss}," +
                       $"{totalValue.ToString("F2", usCulture)}," +
-                      $"{totalNokValue.ToString("F2", usCulture)}," +
+                      $"{totalCurrencyValue.ToString("F2", usCulture)}," +
                       $"{totalBtcValue.ToString("F8", usCulture)}");
         
         await File.AppendAllLinesAsync(totalsPath, totalLines);
@@ -110,7 +113,7 @@ public class ExportService : IExportService
 
     private async Task ExportToJsonAsync(
         IEnumerable<CoinBalance> balances, 
-        decimal usdToNokRate, 
+        decimal usdExchangeRate, 
         decimal btcPrice, 
         string valuesPath,
         string totalsPath)
@@ -125,7 +128,7 @@ public class ExportService : IExportService
                 b.Balance,
                 Price = b.Price,
                 UsdValue = b.Value,
-                NokValue = _valueCalculationService.CalculateNokValue(b.Value, usdToNokRate),
+                CurrencyValue = _valueCalculationService.CalculateCurrencyValue(b.Value, usdExchangeRate),
                 BtcValue = _valueCalculationService.CalculateBtcValue(b.Value, btcPrice),
                 b.Source
             })
@@ -135,7 +138,7 @@ public class ExportService : IExportService
         {
             Timestamp = timestamp,
             UsdValue = balances.Sum(b => b.Value),
-            NokValue = balances.Sum(b => _valueCalculationService.CalculateNokValue(b.Value, usdToNokRate)),
+            CurrencyValue = balances.Sum(b => _valueCalculationService.CalculateCurrencyValue(b.Value, usdExchangeRate)),
             BtcValue = balances.Sum(b => _valueCalculationService.CalculateBtcValue(b.Value, btcPrice))
         };
 
@@ -166,7 +169,7 @@ public class ExportService : IExportService
 
     private async Task ExportToExcelAsync(
         IEnumerable<CoinBalance> balances, 
-        decimal usdToNokRate, 
+        decimal usdExchangeRate, 
         decimal btcPrice, 
         string valuesPath,
         string totalsPath)
@@ -174,13 +177,13 @@ public class ExportService : IExportService
         // Set EPPlus license context
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-        await ExportValuesToExcelAsync(balances, usdToNokRate, btcPrice, valuesPath);
-        await ExportTotalsToExcelAsync(balances, usdToNokRate, btcPrice, totalsPath);
+        await ExportValuesToExcelAsync(balances, usdExchangeRate, btcPrice, valuesPath);
+        await ExportTotalsToExcelAsync(balances, usdExchangeRate, btcPrice, totalsPath);
     }
 
     private async Task ExportValuesToExcelAsync(
         IEnumerable<CoinBalance> balances,
-        decimal usdToNokRate,
+        decimal usdExchangeRate,
         decimal btcPrice,
         string path)
     {
@@ -212,7 +215,7 @@ public class ExportService : IExportService
                 {
                     _logger.LogDebug("Adding headers to new sheet");
                     string[] headers = { "Timestamp", "Asset", "Balance", "Price (USDT)", 
-                                       "Value (USDT)", "Value (NOK)", "Value (BTC)", "Source" };
+                                       "Value (USDT)", $"Value ({_exchangeRateConfig.Currency}", "Value (BTC)", "Source" };
                     for (int i = 0; i < headers.Length; i++)
                     {
                         sheet.Cells[1, i + 1].Value = headers[i];
@@ -232,7 +235,7 @@ public class ExportService : IExportService
                 // Add new data
                 foreach (var balance in balances)
                 {
-                    var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
+                    var currencyValue = _valueCalculationService.CalculateCurrencyValue(balance.Value, usdExchangeRate);
                     var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
 
                     sheet.Cells[row, 1].Value = balance.Timestamp;
@@ -240,7 +243,7 @@ public class ExportService : IExportService
                     sheet.Cells[row, 3].Value = balance.Balance;
                     sheet.Cells[row, 4].Value = balance.Price;
                     sheet.Cells[row, 5].Value = balance.Value;
-                    sheet.Cells[row, 6].Value = nokValue;
+                    sheet.Cells[row, 6].Value = currencyValue;
                     sheet.Cells[row, 7].Value = btcValue;
                     sheet.Cells[row, 8].Value = balance.Source;
 
@@ -301,9 +304,9 @@ public class ExportService : IExportService
                     chart.SetSize(800, 400);
                     
                     // Configure the chart
-                    chart.Title.Text = "Asset Values (NOK) Over Time";
+                    chart.Title.Text = $"Asset Values ({_exchangeRateConfig.Currency}) Over Time";
                     chart.XAxis.Title.Text = "Date";
-                    chart.YAxis.Title.Text = "NOK Value";
+                    chart.YAxis.Title.Text = $"{_exchangeRateConfig.Currency} Value";
                     
                     // Add the data series grouped by Asset
                     var dimension = sheet.Dimension;
@@ -322,10 +325,10 @@ public class ExportService : IExportService
 
                             if (!assetRows.Any()) continue;
 
-                            var nokValues = sheet.Cells[assetRows[0], 6, assetRows[^1], 6];
+                            var currencyValues = sheet.Cells[assetRows[0], 6, assetRows[^1], 6];
                             var timestamps = sheet.Cells[assetRows[0], 1, assetRows[^1], 1];
 
-                            var series = chart.Series.Add(nokValues, timestamps);
+                            var series = chart.Series.Add(currencyValues, timestamps);
                             series.Header = asset;
                         }
                     }
@@ -377,7 +380,7 @@ public class ExportService : IExportService
 
     private async Task ExportTotalsToExcelAsync(
         IEnumerable<CoinBalance> balances,
-        decimal usdToNokRate,
+        decimal usdExchangeRate,
         decimal btcPrice,
         string path)
     {
@@ -407,7 +410,7 @@ public class ExportService : IExportService
                 // Add headers if sheet is new
                 if (sheet.Dimension == null)
                 {
-                    string[] headers = { "Timestamp", "Total (USDT)", "Total (NOK)", "Total (BTC)" };
+                    string[] headers = { "Timestamp", "Total (USDT)", $"Total ({_exchangeRateConfig.Currency})", "Total (BTC)" };
                     for (int i = 0; i < headers.Length; i++)
                     {
                         sheet.Cells[1, i + 1].Value = headers[i];
@@ -433,12 +436,12 @@ public class ExportService : IExportService
                 foreach (var group in groupedBalances)
                 {
                     var totalValue = group.Sum(b => b.Value);
-                    var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+                    var totalCurrencyValue = _valueCalculationService.CalculateCurrencyValue(totalValue, usdExchangeRate);
                     var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
 
                     sheet.Cells[row, 1].Value = group.LastOrDefault()?.Timestamp;
                     sheet.Cells[row, 2].Value = totalValue;
-                    sheet.Cells[row, 3].Value = totalNokValue;
+                    sheet.Cells[row, 3].Value = totalCurrencyValue;
                     sheet.Cells[row, 4].Value = totalBtcValue;
                     row++;
                 }
@@ -467,17 +470,17 @@ public class ExportService : IExportService
                     chart.SetSize(800, 400);
                     
                     // Configure the chart
-                    chart.Title.Text = "Portfolio Value (NOK) Over Time";
+                    chart.Title.Text = $"Portfolio Value ({_exchangeRateConfig.Currency}) Over Time";
                     chart.XAxis.Title.Text = "Date";
-                    chart.YAxis.Title.Text = "NOK Value";
+                    chart.YAxis.Title.Text = $"{_exchangeRateConfig.Currency} Value";
                     
                     // Add the data series
                     var lastRow = sheet.Dimension?.End.Row ?? 2; // Default to 2 if null
-                    var nokValues = sheet.Cells[2, 3, lastRow, 3]; // NOK values (column C)
+                    var currencyValues = sheet.Cells[2, 3, lastRow, 3]; // Currency values (column C)
                     var timestamps = sheet.Cells[2, 1, lastRow, 1]; // Timestamps (column A)
                     
-                    var series = chart.Series.Add(nokValues, timestamps);
-                    series.Header = "NOK Value";
+                    var series = chart.Series.Add(currencyValues, timestamps);
+                    series.Header = $"{_exchangeRateConfig.Currency} Value";
                     
                     // Style the series
                     series.Fill.Color = Color.FromArgb(91, 155, 213); // Blue
@@ -505,11 +508,11 @@ public class ExportService : IExportService
                     {
                         // Update the data range
                         var lastRow = sheet.Dimension?.End.Row ?? 2; // Default to 2 if null
-                        var nokValues = sheet.Cells[2, 3, lastRow, 3]; // NOK values (column C)
+                        var currencyValues = sheet.Cells[2, 3, lastRow, 3]; // Currency values (column C)
                         var timestamps = sheet.Cells[2, 1, lastRow, 1]; // Timestamps (column A)
                         
                         var series = chart.Series[0];
-                        series.Series = nokValues.FullAddress;
+                        series.Series = currencyValues.FullAddress;
                         series.XSeries = timestamps.FullAddress;
                     }
                 }

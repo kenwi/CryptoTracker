@@ -5,8 +5,8 @@ public class ValueCalculationService : IValueCalculationService
         return btcPrice > 0 ? usdValue / btcPrice : 0;
     }
 
-    public decimal CalculateNokValue(decimal usdValue, decimal usdToNokRate)
+    public decimal CalculateCurrencyValue(decimal usdValue, decimal exchangeRate)
     {
-        return usdValue * usdToNokRate;
+        return usdValue * exchangeRate;
     }
 } 

@@ -1,4 +1,4 @@
 ﻿public interface IDisplayService
 {
-    void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdToNokRate, decimal btcPrice);
+    void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdExchangeRate, decimal btcPrice);
 }

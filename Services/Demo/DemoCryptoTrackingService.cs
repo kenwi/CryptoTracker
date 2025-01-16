@@ -62,13 +62,13 @@ public class DemoCryptoTrackingService : IHostedService
     {
         try
         {
-            var usdToNokRate = await _exchangeRateService.GetUsdToNokRateAsync();
+            var usdExchangeRate = await _exchangeRateService.GetUsdExchangeRate();
             var binanceBalances = await _binanceService.GetDetailedBalancesAsync(_demoBalances);
 
             var allBalances = binanceBalances.ToList();
             var btcPrice = allBalances.FirstOrDefault(b => b.Asset == "BTC")?.Price ?? 0;
             
-            _displayService.DisplayBalances(allBalances, usdToNokRate, btcPrice);
+            _displayService.DisplayBalances(allBalances, usdExchangeRate, btcPrice);
         }
         catch (Exception ex)
         {

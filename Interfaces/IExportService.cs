@@ -2,6 +2,6 @@
 {
     Task ExportBalancesAsync(
         IEnumerable<CoinBalance> balances, 
-        decimal usdToNokRate, 
+        decimal usdExchangeRate, 
         decimal btcPrice);
 }
