@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 appsettings.json
+appsettings.Development.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -366,7 +367,4 @@ FodyWeavers.xsd
 /exports-converted
 /Properties
 /dev-exports
-/.gitignore
 /appsettings.Development.json
-/.gitignore
-/.gitignore
