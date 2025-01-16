@@ -1,4 +1,4 @@
 public interface IExchangeRateService
 {
-    Task<decimal> GetUsdToNokRateAsync();
+    Task<decimal> GetUsdExchangeRate();
 } 

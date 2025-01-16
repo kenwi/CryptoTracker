@@ -1,22 +1,28 @@
+using Microsoft.Extensions.Options;
 using System.Globalization;
 
 public class BalanceDisplayService : IDisplayService
 {
     private readonly IValueCalculationService _valueCalculationService;
+    private readonly ExchangeRateConfig _exchangeRateConfig;
     private List<CoinBalance> _previousBalances = [];
 
-    public BalanceDisplayService(IValueCalculationService valueCalculationService)
+    public BalanceDisplayService(
+        IValueCalculationService valueCalculationService,
+        IOptions<ExchangeRateConfig> exchangeRateConfig)
     {
         _valueCalculationService = valueCalculationService;
+        _exchangeRateConfig = exchangeRateConfig.Value;
     }
 
-    public void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdToNokRate, decimal btcPrice)
+    public void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdExchangeRate, decimal btcPrice)
     {
         var usCulture = new CultureInfo("en-US");
-        var nokCulture = new CultureInfo("nb-NO");
+        var culture = new CultureInfo(_exchangeRateConfig.Culture);
+        var currencyName = _exchangeRateConfig.Currency;
 
         Console.WriteLine($"\n{DateTime.Now:G}");
-        Console.WriteLine("Coin     | Balance      | Price            | Value (USDT)      | Value (NOK)       | Change (USDT)  | Change % | Source");
+        Console.WriteLine($"Coin     | Balance      | Price            | Value (USDT)      | Value ({currencyName})       | Change (USDT)  | Change % | Source");
         Console.WriteLine("--------------------------------------------------------------------------------------------------------------------------");
 
         foreach (var balance in currentBalances)
@@ -33,7 +39,7 @@ public class BalanceDisplayService : IDisplayService
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
 
-            var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
+            var currencyValue = _valueCalculationService.CalculateCurrencyValue(balance.Value, usdExchangeRate);
             var valueChange = previousBalance != null ? balance.Value - previousBalance.Value : 0;
             var percentChange = previousBalance?.Value > 0 ? (valueChange / previousBalance.Value) * 100 : 0;
 
@@ -50,40 +56,40 @@ public class BalanceDisplayService : IDisplayService
                 balance.Balance,
                 $"{balance.Price.ToString("N3", usCulture)} USDT",
                 $"{balance.Value.ToString("N2", usCulture)} USDT",
-                $"{nokValue.ToString("N2", nokCulture)} NOK",
+                $"{currencyValue.ToString("N2", culture)} {_exchangeRateConfig.Currency}",
                 changeDisplay,
                 percentDisplay,
                 balance.Source);
         }
 
-        DisplayTotals(currentBalances, usdToNokRate, btcPrice);
+        DisplayTotals(currentBalances, usdExchangeRate, btcPrice);
         _previousBalances = currentBalances.ToList();
     }
 
-    private void DisplayTotals(IEnumerable<CoinBalance> currentBalances, decimal usdToNokRate, decimal btcPrice)
+    private void DisplayTotals(IEnumerable<CoinBalance> currentBalances, decimal exchangeRate, decimal btcPrice)
     {
         var usCulture = new CultureInfo("en-US");
-        var nokCulture = new CultureInfo("nb-NO");
+        var culture = new CultureInfo("nb-NO");
 
         var totalValue = currentBalances.Sum(b => b.Value);
-        var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+        var totalCurrencyValue = _valueCalculationService.CalculateCurrencyValue(totalValue, exchangeRate);
         var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
 
         var previousTotal = _previousBalances.Sum(b => b.Value);
-        var previousNokTotal = _valueCalculationService.CalculateNokValue(previousTotal, usdToNokRate);
+        var previousCurrencyTotal = _valueCalculationService.CalculateCurrencyValue(previousTotal, exchangeRate);
         var previousBtcTotal = _valueCalculationService.CalculateBtcValue(previousTotal, btcPrice);
 
         var usdChange = totalValue - previousTotal;
-        var nokChange = totalNokValue - previousNokTotal;
+        var currencyChange = totalCurrencyValue - previousCurrencyTotal;
         var btcChange = totalBtcValue - previousBtcTotal;
 
         var usdChangePercent = previousTotal > 0 ? (usdChange / previousTotal) * 100 : 0;
-        var nokChangePercent = previousNokTotal > 0 ? (nokChange / previousNokTotal) * 100 : 0;
+        var currencyChangePercent = previousCurrencyTotal > 0 ? (currencyChange / previousCurrencyTotal) * 100 : 0;
         var btcChangePercent = previousBtcTotal > 0 ? (btcChange / previousBtcTotal) * 100 : 0;
         
         Console.ForegroundColor = usdChange >= 0 ? ConsoleColor.DarkGreen : ConsoleColor.DarkRed;
         Console.WriteLine($"\n{FormatTotal("USDT", totalValue, usdChange, usdChangePercent, usCulture)}");
-        Console.WriteLine($"{FormatTotal("NOK", totalNokValue, nokChange, nokChangePercent, nokCulture)}");
+        Console.WriteLine($"{FormatTotal(_exchangeRateConfig.Currency, totalCurrencyValue, currencyChange, currencyChangePercent, culture)}");
         Console.WriteLine($"{FormatTotal("BTC", totalBtcValue, btcChange, btcChangePercent, null, 8)}");
         Console.ResetColor();
     }

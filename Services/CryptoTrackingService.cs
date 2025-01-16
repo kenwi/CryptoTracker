@@ -71,7 +71,7 @@ public class CryptoTrackingService : IHostedService
     {
         try
         {
-            var usdToNokRate = await _exchangeRateService.GetUsdToNokRateAsync();
+            var usdExchangeRate = await _exchangeRateService.GetUsdExchangeRate();
             var manualBalances = GetManualBalances();
 
             // Try to get Binance balances with retries
@@ -123,12 +123,12 @@ public class CryptoTrackingService : IHostedService
             }
 
             var btcPrice = allBalances.FirstOrDefault(b => b.Asset == "BTC")?.Price ?? 0;
-            _balanceDisplayService.DisplayBalances(allBalances, usdToNokRate, btcPrice);
+            _balanceDisplayService.DisplayBalances(allBalances, usdExchangeRate, btcPrice);
 
             // Only export if service is available
             if(_exportService is not null)
             {
-                await _exportService.ExportBalancesAsync(allBalances, usdToNokRate, btcPrice);
+                await _exportService.ExportBalancesAsync(allBalances, usdExchangeRate, btcPrice);
             }
             
             // Only send to Directus if service is available

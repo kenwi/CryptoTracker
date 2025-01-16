@@ -12,7 +12,7 @@ A .NET Core application that tracks cryptocurrency portfolio values across diffe
   - Directus API integration for data persistence
 - Multi-currency display with culture-specific formatting:
   - USD/USDT values (US format with commas)
-  - NOK conversion using live exchange rates (Norwegian format with spaces)
+  - Currency conversion using live exchange rates
   - BTC equivalent values
 - Data export and historical tracking:
   - CSV, JSON, and Excel formats
@@ -351,10 +351,10 @@ The application supports exporting portfolio data in multiple formats:
 - **Excel**: Rich spreadsheet format with data visualization
   - Portfolio Values sheet:
     - Sortable table with all asset data
-    - Line chart showing NOK value over time for each asset
+    - Line chart showing currency value over time for each asset
   - Portfolio Totals sheet:
     - Historical total values in all currencies
-    - Line chart showing total portfolio value over time in NOK
+    - Line chart showing total portfolio value over time in custom currency
 
 Configure the export format in `appsettings.json`:
 
@@ -413,7 +413,7 @@ Timestamp,Total (USDT),Total (NOK),Total (BTC)
         "Balance": 0.123,
         "Price": 65000.00,
         "UsdValue": 7995.00,
-        "NokValue": 83947.50,
+        "CurrencyValue": 83947.50,
         "BtcValue": 1.00000000,
         "Source": "Binance"
       }
@@ -429,7 +429,7 @@ Timestamp,Total (USDT),Total (NOK),Total (BTC)
   {
     "Timestamp": "2024-01-01T12:00:00",
     "UsdValue": 12945.40,
-    "NokValue": 135926.70,
+    "CurrencyValue": 135926.70,
     "BtcValue": 1.06188000
   }
 ]
@@ -492,7 +492,7 @@ The application will automatically start tracking your portfolio:
 - Console displays:
   - Individual coin balances
   - Current prices
-  - Value in USDT and NOK
+  - Value in USDT and cusom currency
   - Price change indicators (green/red)
   - Source of each balance
   - Total portfolio value with changes

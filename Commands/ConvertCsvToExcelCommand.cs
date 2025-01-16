@@ -83,7 +83,7 @@ public class ConvertCsvToExcelCommand : Command
             }
 
             // Read latest exchange rates from totals CSV
-            decimal usdToNokRate = 0;
+            decimal usdEchangeRate = 0;
             decimal btcPrice = 0;
             using (var reader = new StreamReader(totalsFile.FullName))
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
@@ -105,9 +105,9 @@ public class ConvertCsvToExcelCommand : Command
                     var parts = lastLine.Split(',');
                     if (parts.Length >= 3 && 
                         decimal.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var totalUsd) &&
-                        decimal.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out var totalNok))
+                        decimal.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out var totalCurrency))
                     {
-                        usdToNokRate = totalNok / totalUsd;
+                        usdEchangeRate = totalCurrency / totalUsd;
 
                         if (parts.Length >= 4 && 
                             decimal.TryParse(parts[3], NumberStyles.Any, CultureInfo.InvariantCulture, out var totalBtc))
@@ -138,7 +138,7 @@ public class ConvertCsvToExcelCommand : Command
             currentConfig.ValuesFilename = config.ValuesFilename;
             currentConfig.TotalsFilename = config.TotalsFilename;
 
-            await exportService.ExportBalancesAsync(balances, usdToNokRate, btcPrice);
+            await exportService.ExportBalancesAsync(balances, usdEchangeRate, btcPrice);
             
             logger.LogInformation("Successfully converted CSV files to Excel format in {OutputPath}", outputPath);
         }
