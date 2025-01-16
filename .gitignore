@@ -367,3 +367,6 @@ FodyWeavers.xsd
 /Properties
 /dev-exports
 /.gitignore
+/appsettings.Development.json
+/.gitignore
+/.gitignore
