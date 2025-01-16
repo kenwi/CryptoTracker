@@ -23,7 +23,7 @@ public class Program
         rootCommand.AddCommand(new ViewHistoricalDataCommand());
         rootCommand.AddCommand(new ListAssetsCommand());
         rootCommand.AddCommand(new ViewTotalsCommand());
-        //rootCommand.AddCommand(new ConvertCsvToExcelCommand());
+        rootCommand.AddCommand(new ConvertCsvToExcelCommand());
 
         return await rootCommand.InvokeAsync(args);
     }

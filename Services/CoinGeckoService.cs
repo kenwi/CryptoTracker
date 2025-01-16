@@ -22,6 +22,7 @@ public class CoinGeckoService : ICoinGeckoService
     {
         try
         {
+            var timestamp = DateTime.Now;
             var coinIds = string.Join(",", _config.Assets.Select(a => a.CoinGeckoId));
             var response = await _httpClient.GetStringAsync(
                 $"{_config.BaseUrl}/simple/price?ids={coinIds}&vs_currencies=usd");
@@ -47,6 +48,7 @@ public class CoinGeckoService : ICoinGeckoService
                 var total = CalculateTotal(asset);
                 balances.Add(new CoinBalance
                 {
+                    Timestamp = timestamp,
                     Asset = asset.AssetName,
                     Balance = total,
                     Price = price,

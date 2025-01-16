@@ -43,6 +43,7 @@ public class BinanceService : IBinanceService
             var price = await GetPriceAsync($"{balance.Asset}USDT");
             return new CoinBalance
             {
+                Timestamp = DateTime.Now,
                 Asset = balance.Asset,
                 Balance = balance.Total,
                 Price = price.Price,

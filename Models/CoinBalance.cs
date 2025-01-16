@@ -1,8 +1,9 @@
-public record CoinBalance
+public class CoinBalance
 {
-    public string Asset { get; init; } = string.Empty;
-    public decimal Balance { get; init; }
-    public decimal Price { get; init; }
-    public decimal Value { get; init; }
-    public string Source { get; init; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public string Asset { get; set; } = string.Empty;
+    public decimal Balance { get; set; }
+    public decimal Price { get; set; }
+    public decimal Value { get; set; }
+    public string Source { get; set; } = string.Empty;
 } 

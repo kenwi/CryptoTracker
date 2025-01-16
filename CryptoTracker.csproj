@@ -8,13 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="dev-exports\**" />
+    <Compile Remove="exports-converted\**" />
     <Compile Remove="exports\**" />
+    <EmbeddedResource Remove="dev-exports\**" />
+    <EmbeddedResource Remove="exports-converted\**" />
     <EmbeddedResource Remove="exports\**" />
+    <None Remove="dev-exports\**" />
+    <None Remove="exports-converted\**" />
     <None Remove="exports\**" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Binance.Net" Version="10.16.0" />
+    <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="EPPlus" Version="7.5.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
