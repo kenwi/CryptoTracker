@@ -22,13 +22,13 @@ public class KeyPressHandlerService : IKeyPressHandlerService
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var key = Console.ReadKey(true);
-                if (key.Key == ConsoleKey.Spacebar)
+                var keyPress = Console.ReadKey(true);
+                if (keyPress.Key == ConsoleKey.Spacebar)
                 {
                     _logger.LogDebug("Spacebar pressed - triggering update");
                     onSpacebar();
                 }
-                if (key.Key == ConsoleKey.Enter)
+                if (keyPress.Key == ConsoleKey.Enter)
                 {
                     _logger.LogInformation("Enter pressed - stopping application");
                     _applicationLifetime.StopApplication();
