@@ -182,7 +182,7 @@ public class HistoricalDataService : IHistoricalDataService
     private void DisplayHistoricalData(IEnumerable<HistoricalDataEntry> data)
     {
         var usCulture = new CultureInfo("en-US");
-        var culture = new CultureInfo("nb-NO");
+        var culture = new CultureInfo(_exchangeRateConfig.Culture);
 
         Console.WriteLine("\nHistorical Data:");
         Console.WriteLine($"Timestamp           | Asset | Balance      | Price (USDT)  | Value (USDT)  | Value ({_exchangeRateConfig.Currency})   | Value (BTC)   | Source");
@@ -260,7 +260,7 @@ public class HistoricalDataService : IHistoricalDataService
     private void DisplayTotals(IEnumerable<PortfolioTotal> totals)
     {
         var usCulture = new CultureInfo("en-US");
-        var culture = new CultureInfo("nb-NO");
+        var culture = new CultureInfo(_exchangeRateConfig.Culture);
 
         Console.WriteLine("\nPortfolio Totals:");
         Console.WriteLine($"Timestamp           | Total (USDT)     | Total ({_exchangeRateConfig.Currency})      | Total (BTC)");

@@ -69,7 +69,7 @@ public class BalanceDisplayService : IDisplayService
     private void DisplayTotals(IEnumerable<CoinBalance> currentBalances, decimal exchangeRate, decimal btcPrice)
     {
         var usCulture = new CultureInfo("en-US");
-        var culture = new CultureInfo("nb-NO");
+        var culture = new CultureInfo(_exchangeRateConfig.Culture);
 
         var totalValue = currentBalances.Sum(b => b.Value);
         var totalCurrencyValue = _valueCalculationService.CalculateCurrencyValue(totalValue, exchangeRate);
