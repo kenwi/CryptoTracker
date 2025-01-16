@@ -77,7 +77,7 @@ public class ExportService : IExportService
             var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
             var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
 
-            valueLines.Add($"{timestamp:yyyy-MM-dd HH:mm:ss}," +
+            valueLines.Add($"{balance.Timestamp:yyyy-MM-dd HH:mm:ss}," +
                           $"{balance.Asset}," +
                           $"{balance.Balance.ToString("F3", usCulture)}," +
                           $"{balance.Price.ToString("F3", usCulture)}," +
@@ -184,7 +184,7 @@ public class ExportService : IExportService
         decimal btcPrice,
         string path)
     {
-        var timestamp = DateTime.Now;
+        //var timestamp = DateTime.Now;
         var file = new FileInfo(path);
         
         try
@@ -235,7 +235,7 @@ public class ExportService : IExportService
                     var nokValue = _valueCalculationService.CalculateNokValue(balance.Value, usdToNokRate);
                     var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
 
-                    sheet.Cells[row, 1].Value = timestamp;
+                    sheet.Cells[row, 1].Value = balance.Timestamp;
                     sheet.Cells[row, 2].Value = balance.Asset;
                     sheet.Cells[row, 3].Value = balance.Balance;
                     sheet.Cells[row, 4].Value = balance.Price;
@@ -331,9 +331,12 @@ public class ExportService : IExportService
                     }
                     
                     // Format axis
-                    chart.XAxis.Format = "dd-MMM-yy";
+                    chart.XAxis.Format = "dd-MMM-yy HH:mm";
+                    chart.XAxis.TickLabelPosition = eTickLabelPosition.Low;
+                    chart.XAxis.Font.Size = 8;
+                    //chart.XAxis.Orientation = eTextOrientation.UpRight;
                     chart.YAxis.Format = "#,##0";
-                    chart.YAxis.MajorGridlines.Fill.Color = System.Drawing.Color.LightGray;
+                    chart.YAxis.MajorGridlines.Fill.Color = Color.LightGray;
                     
                     // Style the chart
                     chart.Style = eChartStyle.Style2;
@@ -378,7 +381,7 @@ public class ExportService : IExportService
         decimal btcPrice,
         string path)
     {
-        var timestamp = DateTime.Now;
+        //var timestamp = DateTime.Now;
         var file = new FileInfo(path);
         
         try
@@ -421,15 +424,24 @@ public class ExportService : IExportService
                 int row = (sheet.Dimension?.Rows ?? 1) + 1;
                 _logger.LogDebug("Starting totals entry at row: {Row}", row);
 
-                // Calculate and add new totals
-                var totalValue = balances.Sum(b => b.Value);
-                var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
-                var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
+                // Group the balances by time
+                var interval = new TimeSpan(0, 1, 0);
+                var groupedBalances = balances
+                    .GroupBy(b => b.Timestamp.Ticks / interval.Ticks);
 
-                sheet.Cells[row, 1].Value = timestamp;
-                sheet.Cells[row, 2].Value = totalValue;
-                sheet.Cells[row, 3].Value = totalNokValue;
-                sheet.Cells[row, 4].Value = totalBtcValue;
+                // Calculate and add new totals
+                foreach (var group in groupedBalances)
+                {
+                    var totalValue = group.Sum(b => b.Value);
+                    var totalNokValue = _valueCalculationService.CalculateNokValue(totalValue, usdToNokRate);
+                    var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
+
+                    sheet.Cells[row, 1].Value = group.LastOrDefault()?.Timestamp;
+                    sheet.Cells[row, 2].Value = totalValue;
+                    sheet.Cells[row, 3].Value = totalNokValue;
+                    sheet.Cells[row, 4].Value = totalBtcValue;
+                    row++;
+                }
 
                 // Format columns
                 sheet.Column(1).Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
@@ -468,13 +480,16 @@ public class ExportService : IExportService
                     series.Header = "NOK Value";
                     
                     // Style the series
-                    series.Fill.Color = System.Drawing.Color.FromArgb(91, 155, 213); // Blue
-                    series.Border.Fill.Color = System.Drawing.Color.FromArgb(91, 155, 213);
+                    series.Fill.Color = Color.FromArgb(91, 155, 213); // Blue
+                    series.Border.Fill.Color = Color.FromArgb(91, 155, 213);
                     
                     // Format axis
-                    chart.XAxis.Format = "dd-MMM-yy";
+                    chart.XAxis.Format = "dd-MMM-yy HH:mm";
+                    chart.XAxis.TickLabelPosition = eTickLabelPosition.Low;
+                    chart.XAxis.Font.Size = 8;
+                    //chart.XAxis.Orientation = eAxisOrientation.
                     chart.YAxis.Format = "#,##0";
-                    chart.YAxis.MajorGridlines.Fill.Color = System.Drawing.Color.LightGray;
+                    chart.YAxis.MajorGridlines.Fill.Color = Color.LightGray;
                     
                     // Style the chart
                     chart.Style = eChartStyle.Style2;

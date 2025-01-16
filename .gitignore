@@ -365,3 +365,5 @@ FodyWeavers.xsd
 /exports
 /exports-converted
 /Properties
+/dev-exports
+/.gitignore
