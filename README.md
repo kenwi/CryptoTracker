@@ -82,7 +82,8 @@ Configuration is managed through `appsettings.json`:
     ]
   },
   "ExchangeRate": {
-    "ApiUrl": "https://api.exchangerate-api.com/v4/latest/USD"
+    "ApiUrl": "https://api.exchangerate-api.com/v4/latest/USD",
+    "Currency": "NOK"
   },
   "CryptoTracking": {
     "UpdateIntervalMinutes": 30,
