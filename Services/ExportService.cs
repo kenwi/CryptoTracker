@@ -33,6 +33,7 @@ public class ExportService : IExportService
         decimal usdExchangeRate, 
         decimal btcPrice)
     {
+        var timestamp = DateTime.Now;
         if (!_exportConfig.Enabled) return;
 
         try
@@ -49,7 +50,7 @@ public class ExportService : IExportService
                 _ => throw new ArgumentException($"Unsupported format: {_exportConfig.Format}")
             });
 
-            _logger.LogInformation("Exported portfolio to {ValuesPath} and {TotalsPath}", valuesPath, totalsPath);
+            _logger.LogInformation("Exported portfolio to {ValuesPath} and {TotalsPath} in {TotalTime}ms", valuesPath, totalsPath, (DateTime.Now - timestamp).TotalMilliseconds);
         }
         catch (Exception ex)
         {

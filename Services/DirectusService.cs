@@ -75,7 +75,9 @@ public class DirectusService : IDirectusService
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            _logger.LogDebug("Directus API Response: {Response}", responseContent);
+
+            if (_config.LoggingEnabled)
+                _logger.LogDebug("Directus API Response: {Response}", responseContent);
         }
         catch (Exception ex)
         {

@@ -1,22 +1,27 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Globalization;
 
 public class BalanceDisplayService : IDisplayService
 {
+    private readonly ILogger<BalanceDisplayService> _logger;
     private readonly IValueCalculationService _valueCalculationService;
     private readonly ExchangeRateConfig _exchangeRateConfig;
     private List<CoinBalance> _previousBalances = [];
 
     public BalanceDisplayService(
         IValueCalculationService valueCalculationService,
-        IOptions<ExchangeRateConfig> exchangeRateConfig)
+        IOptions<ExchangeRateConfig> exchangeRateConfig,
+        ILogger<BalanceDisplayService> logger)
     {
+        _logger = logger;
         _valueCalculationService = valueCalculationService;
         _exchangeRateConfig = exchangeRateConfig.Value;
     }
 
     public void DisplayBalances(IEnumerable<CoinBalance> currentBalances, decimal usdExchangeRate, decimal btcPrice)
     {
+        var timestamp = DateTime.Now;
         var usCulture = new CultureInfo("en-US");
         var culture = new CultureInfo(_exchangeRateConfig.Culture);
         var currencyName = _exchangeRateConfig.Currency;
@@ -64,6 +69,8 @@ public class BalanceDisplayService : IDisplayService
 
         DisplayTotals(currentBalances, usdExchangeRate, btcPrice);
         _previousBalances = currentBalances.ToList();
+
+        _logger.LogInformation("Balances displayed in {TotalTime}ms", (DateTime.Now - timestamp).TotalMilliseconds);
     }
 
     private void DisplayTotals(IEnumerable<CoinBalance> currentBalances, decimal exchangeRate, decimal btcPrice)

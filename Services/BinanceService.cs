@@ -29,8 +29,9 @@ public class BinanceService : IBinanceService
         var accountInfo = await _client.SpotApi.Account.GetAccountInfoAsync();
         if (!accountInfo.Success)
         {
-            _logger.LogError("Failed to fetch Binance account info");
-            return Enumerable.Empty<CoinBalance>();
+            var message = "Failed to fetch Binance account info";
+            _logger.LogError(message);
+            throw new Exception(message);
         }
 
         var timestamp = DateTime.Now;
@@ -54,11 +55,13 @@ public class BinanceService : IBinanceService
 
         var results = balancesTasks[0].Concat(balancesTasks[1]).ToList();
         var totalValue = results.Sum(b => b.Value);
+        var totalTime = (DateTime.Now - timestamp).TotalMilliseconds;
 
         _logger.LogInformation(
-            "Binance balances calculated: Total Value: {TotalValue} USDT, Coin Count: {CoinCount}",
+            "Binance balances calculated: Total Value: {TotalValue} USDT, Coin Count: {CoinCount} in {TotalTime}ms",
             totalValue,
-            results.Count);
+            results.Count,
+            totalTime);
 
         return results;
     }
@@ -90,7 +93,7 @@ public class BinanceService : IBinanceService
             });
     }
 
-    private IEnumerable<CoinBalance> CreateManualBalances(
+    private static IEnumerable<CoinBalance> CreateManualBalances(
         IEnumerable<BinanceBalance> manualBalances, 
         Dictionary<string, decimal> prices, 
         DateTime timestamp)
@@ -107,7 +110,7 @@ public class BinanceService : IBinanceService
         });
     }
 
-    private CoinBalance CreateCoinBalance(
+    private static CoinBalance CreateCoinBalance(
         DateTime timestamp,
         string asset,
         decimal balance,

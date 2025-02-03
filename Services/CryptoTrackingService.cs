@@ -71,6 +71,7 @@ public class CryptoTrackingService : IHostedService
     {
         try
         {
+            var timestamp = DateTime.Now;
             var usdExchangeRate = await _exchangeRateService.GetUsdExchangeRate();
             var manualBalances = GetManualBalances();
 
@@ -83,7 +84,7 @@ public class CryptoTrackingService : IHostedService
                     binanceBalances = (await RetryWithBackoff(
                         async () => await _binanceService.GetDetailedBalancesAsync(manualBalances),
                         maxAttempts: 3,
-                        initialDelayMs: 1000))
+                        initialDelayMs: 2000))
                         .ToList();
                 }
                 catch (Exception ex)
@@ -105,7 +106,7 @@ public class CryptoTrackingService : IHostedService
                     var geckoBalances = await RetryWithBackoff(
                         async () => await _coinGeckoService.GetBalancesAsync(),
                         maxAttempts: 3,
-                        initialDelayMs: 1000);
+                        initialDelayMs: 2000);
                     allBalances.AddRange(geckoBalances);
                 }
                 catch (Exception ex)
@@ -123,18 +124,25 @@ public class CryptoTrackingService : IHostedService
             }
 
             var btcPrice = allBalances.FirstOrDefault(b => b.Asset == "BTC")?.Price ?? 0;
-            _balanceDisplayService.DisplayBalances(allBalances, usdExchangeRate, btcPrice);
+            _balanceDisplayService.DisplayBalances(allBalances.OrderBy(asset => asset.Asset), usdExchangeRate, btcPrice);
 
-            // Only export if service is available
-            if(_exportService is not null)
+            // Prepare all tasks that need to be executed
+            var tasks = new List<Task>();
+
+            // Add export task if service is available
+            if (_exportService is not null)
             {
-                await _exportService.ExportBalancesAsync(allBalances, usdExchangeRate, btcPrice);
+                tasks.Add(_exportService.ExportBalancesAsync(allBalances, usdExchangeRate, btcPrice));
             }
-            
-            // Only send to Directus if service is available
+
+            // Add Directus tasks if service is available
             if (_directusService is not null)
             {
-                var tasks = allBalances.Select(balance =>
+                var totalValue = allBalances.Sum(b => b.Value);
+                var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
+
+                // Add individual balance tasks
+                tasks.AddRange(allBalances.Select(balance =>
                 {
                     var btcValue = _valueCalculationService.CalculateBtcValue(balance.Value, btcPrice);
                     return _directusService.SendCoinValueAsync(
@@ -144,14 +152,19 @@ public class CryptoTrackingService : IHostedService
                         balance.Value,
                         balance.Source,
                         btcValue);
-                });
+                }));
 
-                var totalValue = allBalances.Sum(b => b.Value);
-                var totalBtcValue = _valueCalculationService.CalculateBtcValue(totalValue, btcPrice);
-                tasks = tasks.Append(_directusService.SendTotalBalanceAsync(totalValue, totalBtcValue));
+                // Add total balance task
+                tasks.Add(_directusService.SendTotalBalanceAsync(totalValue, totalBtcValue));
+            }
 
+            // Execute all tasks in parallel
+            if (tasks.Any())
+            {
                 await Task.WhenAll(tasks);
             }
+
+            _logger.LogInformation("Balances updated in {Timestamp}ms", (DateTime.Now - timestamp).TotalMilliseconds);
         }
         catch (Exception ex)
         {

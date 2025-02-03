@@ -31,7 +31,7 @@ public class ExchangeRateService : IExchangeRateService
 
         try
         {
-            var response = await _httpClient.GetStringAsync(_config.ApiUrl);
+            var response = await _httpClient.GetStringAsync(_config.ApiUrl);            
             var data = JObject.Parse(response) as dynamic;
             var value = data?.rates[_config.Currency]?.Value;
             var timeLastUpdate = data?.time_last_updated.Value;
