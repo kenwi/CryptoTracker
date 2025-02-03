@@ -60,8 +60,6 @@ public class BinanceService : IBinanceService
             totalValue,
             results.Count);
 
-        Console.WriteLine(DateTime.Now - timestamp);
-
         return results;
     }
 
