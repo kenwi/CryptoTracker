@@ -33,34 +33,98 @@ public class BinanceService : IBinanceService
             return Enumerable.Empty<CoinBalance>();
         }
 
-        var balances = accountInfo.Data.Balances
-            .Concat(manualBalances)
-            .Where(balance => balance.Total > 0 && IsValidSymbol(balance.Asset))
-            .OrderBy(balance => balance.Asset);
+        var timestamp = DateTime.Now;
+        var accountBalances = GetAccountBalances(accountInfo.Data.Balances);
+        var manualSymbols = manualBalances.Select(b => $"{b.Asset}USDT");
 
-        var tasks = balances.Select(async balance =>
-        {
-            var price = await GetPriceAsync($"{balance.Asset}USDT");
-            return new CoinBalance
-            {
-                Timestamp = DateTime.Now,
-                Asset = balance.Asset,
-                Balance = balance.Total,
-                Price = price.Price,
-                Value = price.Price * balance.Total,
-                Source = manualBalances.Any(b => b.Total == balance.Total) ? "Manual" : "Binance"
-            };
-        });
+        // Fetch prices in parallel
+        var pricesTasks = await Task.WhenAll(
+            GetPricesAsync(accountBalances),
+            GetPricesAsync(manualSymbols)
+        );
 
-        var results = await Task.WhenAll(tasks);
+        var accountPriceDict = pricesTasks[0].ToDictionary(p => p.Symbol, p => p.Price);
+        var manualPriceDict = pricesTasks[1].ToDictionary(p => p.Symbol, p => p.Price);
+
+        // Create balances in parallel
+        var balancesTasks = await Task.WhenAll(
+            Task.Run(() => CreateAccountBalances(accountInfo.Data.Balances, accountPriceDict, timestamp)),
+            Task.Run(() => CreateManualBalances(manualBalances, manualPriceDict, timestamp))
+        );
+
+        var results = balancesTasks[0].Concat(balancesTasks[1]).ToList();
         var totalValue = results.Sum(b => b.Value);
 
         _logger.LogInformation(
             "Binance balances calculated: Total Value: {TotalValue} USDT, Coin Count: {CoinCount}",
             totalValue,
-            results.Length);
+            results.Count);
+
+        Console.WriteLine(DateTime.Now - timestamp);
 
         return results;
+    }
+
+    private IEnumerable<string> GetAccountBalances(IEnumerable<BinanceBalance> balances)
+    {
+        return balances
+            .Where(balance => balance.Total > 0 && IsValidSymbol(balance.Asset))
+            .OrderBy(balance => balance.Asset)
+            .Select(b => $"{b.Asset}USDT");
+    }
+
+    private IEnumerable<CoinBalance> CreateAccountBalances(
+        IEnumerable<BinanceBalance> balances, 
+        Dictionary<string, decimal> prices, 
+        DateTime timestamp)
+    {
+        return balances
+            .Where(b => b.Total > 0 && IsValidSymbol(b.Asset))
+            .Select(balance =>
+            {
+                var symbol = $"{balance.Asset}USDT";
+                return CreateCoinBalance(
+                    timestamp,
+                    balance.Asset,
+                    balance.Total,
+                    prices.GetValueOrDefault(symbol),
+                    "Binance");
+            });
+    }
+
+    private IEnumerable<CoinBalance> CreateManualBalances(
+        IEnumerable<BinanceBalance> manualBalances, 
+        Dictionary<string, decimal> prices, 
+        DateTime timestamp)
+    {
+        return manualBalances.Select(balance =>
+        {
+            var symbol = $"{balance.Asset}USDT";
+            return CreateCoinBalance(
+                timestamp,
+                balance.Asset,
+                balance.Total,
+                prices.GetValueOrDefault(symbol),
+                "Manual");
+        });
+    }
+
+    private CoinBalance CreateCoinBalance(
+        DateTime timestamp,
+        string asset,
+        decimal balance,
+        decimal price,
+        string source)
+    {
+        return new CoinBalance
+        {
+            Timestamp = timestamp,
+            Asset = asset,
+            Balance = balance,
+            Price = price,
+            Value = price * balance,
+            Source = source
+        };
     }
 
     public async Task<BinancePrice> GetPriceAsync(string symbol)
@@ -70,6 +134,22 @@ public class BinanceService : IBinanceService
         {
             _logger.LogError("Failed to fetch price for {Symbol}", symbol);
             return new BinancePrice { Symbol = symbol, Price = 0 };
+        }
+        return result.Data;
+    }
+    
+    public async Task<IEnumerable<BinancePrice>> GetPricesAsync(IEnumerable<string> symbols)
+    {
+        if (!symbols.Any())
+        {
+            return Enumerable.Empty<BinancePrice>();
+        }
+
+        var result = await _client.SpotApi.ExchangeData.GetPricesAsync(symbols);
+        if (!result.Success)
+        {
+            _logger.LogError("Failed to fetch prices for {Symbols}", string.Join(", ", symbols));
+            return Enumerable.Empty<BinancePrice>();
         }
         return result.Data;
     }

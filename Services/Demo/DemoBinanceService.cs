@@ -61,4 +61,9 @@ public class DemoBinanceService : IBinanceService
             return new BinancePrice { Price = 0 };
         }
     }
+
+    public Task<IEnumerable<BinancePrice>> GetPricesAsync(IEnumerable<string> symbols)
+    {
+        throw new NotImplementedException();
+    }
 } 

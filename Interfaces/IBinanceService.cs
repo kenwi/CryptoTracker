@@ -5,4 +5,6 @@ public interface IBinanceService
     Task<IEnumerable<CoinBalance>> GetDetailedBalancesAsync(IEnumerable<BinanceBalance> manualBalances);
 
     Task<BinancePrice> GetPriceAsync(string symbol);
+
+    Task<IEnumerable<BinancePrice>> GetPricesAsync(IEnumerable<string> symbols);
 }
